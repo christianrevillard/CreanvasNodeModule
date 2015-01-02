@@ -35,27 +35,9 @@
 
 		element.controller.context.beginPath();
 		element.elementType.draw(element.controller.context);
-		
-		/* Debug edges*/
-		/*
-		if (element.elementType.edges)
-		{
-			var edge = element.elementType.edges[0];
-			controller.context.beginPath();
-			controller.context.moveTo(edge.x, edge.y);
-			element.elementType.edges.forEach(
-					function(edge)
-					{
-						controller.context.lineTo(edge.x, edge.y);
-					}					
-			);
-			controller.context.lineTo(edge.x, edge.y);
-			controller.context.strokeStyle = "#F00";
-			controller.context.stroke();
-		}
-		*/
-		element.controller.context.scale(1/(element.scale.x || 1), 1/(element.scale.y || 1));
-		element.controller.context.rotate(- (element.angle || 0));
-		element.controller.context.translate(-element.x, - element.y);			
+		element.controller.context.fillStyle="black";
+		element.controller.context.fillText("[" + element.id + "]",-20,0);
+		// full reset, avoid to accumulate errors over time
+		element.controller.context.setTransform(1, 0, 0, 1, 0, 0);
 	};
 }());

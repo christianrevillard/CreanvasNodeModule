@@ -1,210 +1,472 @@
 var vector = require('./Vector');
 
+var round = function(x){
+	return Math.round(10000*x)/10000;
+}
+
 var CollisionSolver = function(controller) {				
-	var getCollisionPoint = function(edges)
-	{		
-		var d,dmax = 0;
-		var theMax = {i:0, j:edges.length-1};
-		for (var i = 1; i<edges.length; i++)
-		{
-			for (var j = i+1; j<edges.length; j++)
-			{
-				var dx = edges[i].x-edges[j].x;
-				var dy = edges[i].y-edges[j].y;
-				d = Math.sqrt(dx*dx+dy*dy);
-				if (d>dmax)
-				{
-					dmax=d;
-					theMax.i = i;
-					theMax.j = j;
-				};
-			};																			
-		};
+	this.controller = controller;
+//	this.broadTiles=[];	
+	this.broadTilesWidth = 30; // client/configuration data
+};
 
-		var point1 = edges[theMax.i];
-		var point2 = edges[theMax.j];
-		
-		return {
-			x:(point1.x + point2.x)/2, 
-			y:(point1.y + point2.y)/2, 
-			vectors: vector.getUnitVectors(point1.x, point1.y,  point2.x , point2.y)};			
-	};
+/*
+CollisionSolver.prototype.fillBroadTiles = function(width, height){
+	this.broadTiles=[];
+	for (var row=0;row<height/this.broadTilesWidth;row+=1) {
+		this.broadTiles[row] = this.broadTiles[row] || [];
+		for (var column=0;column<width/this.broadTilesWidth;column+=1) {		
+			this.broadTiles[column] = this.broadTiles[column] || { elements:[];};
+		}
+	}
+};*/
+
+CollisionSolver.prototype.solveCollisions = function(elements){
+	// input: list of elements with uncommited moves (originalPosition/Scale property set)
+	// output: elements are updated with no overlap,
+	// return a list of collision (elements + dt, no points so we avoid finding points for obsolete ones!)
+	var start = (new Date()).getTime();
 	
-	var updateAfterCollision = function (element, other, collisionPoints)
-	{
-		if (element.solid.mass == Infinity && other.solid.mass == Infinity)
-		{
+	var collisionsToCheck = [];
+	var collisionsMatrix = [];
+
+	this.processBroadPhase(collisionsMatrix, collisionsToCheck, elements);		
+
+//	console.log("To broad phase end : " + ((new Date()).getTime() - start));
+
+	var collisions = this.processNarrowPhase(collisionsMatrix, collisionsToCheck);		
+
+//	console.log("To narrow broad phase end : " + ((new Date()).getTime() - start));
+
+	return collisions;
+};
+
+CollisionSolver.prototype.processBroadPhase = function(collisionsMatrix, collisionsToCheck, elements){
+
+	//console.log('Broad phase for ' + elements.length + ' elements');
+	this.broadTiles=[]; //	this.fillBroadTiles(700,500); // to do config
+	this.usedBroadTiles = [];
+	var collisionSolver = this;
+
+	elements.forEach(function(e){
+		for (
+			var row=Math.floor(e.moving.bigBoundaryBox.top/collisionSolver.broadTilesWidth);
+			row<Math.ceil(e.moving.bigBoundaryBox.bottom/collisionSolver.broadTilesWidth);
+			row+=1) {
+			collisionSolver.broadTiles[row] = collisionSolver.broadTiles[row] || [];
+			for (
+				var column=Math.floor(e.moving.bigBoundaryBox.left/collisionSolver.broadTilesWidth);
+				column<Math.ceil(e.moving.bigBoundaryBox.right/collisionSolver.broadTilesWidth);
+				column+=1) {			
+				if (!collisionSolver.broadTiles[row][column])
+				{
+					collisionSolver.broadTiles[row][column] = { elements:[] };
+					collisionSolver.usedBroadTiles.push(collisionSolver.broadTiles[row][column]);
+				}
+				collisionSolver.broadTiles[row][column].elements.push(e);
+			}
+		}
+	});
+
+	//console.log('Broad phase :  ' + this.usedBroadTiles.length + ' tiles in use');
+
+	this.usedBroadTiles.forEach(function(tile){
+		if (tile.elements.length<2)
 			return;
-		}
+		tile.elements.forEach(function(e1){
+			tile.elements.filter(function(e){return e.id>e1.id;}).forEach(function(e2){
+
+				if (!e1.moving.dt && !e2.moving.dt)
+					return;
 				
-		var 
-			colVectors, speedElement, speedOther, localSpeedElement, localSpeedOther, centerCollisionElement,l1,
-			centerCollisionOther,l2;
-		
-		var collisionPoint = getCollisionPoint(collisionPoints);
-		
-		colVectors = collisionPoint.vectors;
-			
-		centerCollisionElement = new vector.Vector(collisionPoint.x-element.position.x, collisionPoint.y-element.position.y);								
-		l1 = vector.vectorProduct(centerCollisionElement, colVectors.v).z;		
+				if (collisionsMatrix[e1.id] && collisionsMatrix[e1.id][e2.id])
+					return;
 
-		centerCollisionOther = new vector.Vector(collisionPoint.x-other.position.x, collisionPoint.y-other.position.y);								
-		l2= vector.vectorProduct(centerCollisionOther, colVectors.v).z;		
-
-		var elementRot = vector.vectorProduct(
-				centerCollisionElement,
-				colVectors.v);	
-
-		var otherRot = vector.vectorProduct(
-				centerCollisionOther,
-				colVectors.v);	
-
-		speedElement = element.moving ? new vector.Vector(
-			element.moving.speed?element.moving.speed.x:0, 
-			element.moving.speed?element.moving.speed.y:0)
-		: new vector.Vector(0,0);
-		
-		speedOther = other.moving ? new vector.Vector(
-			other.moving.speed?other.moving.speed.x:0, 
-			other.moving.speed?other.moving.speed.y:0):
-				new vector.Vector(0,0);
-
-		if (element.moving && element.moving.scaleSpeed)
-		{
-			speedElement.x += centerCollisionElement.x*element.moving.scaleSpeed.x;
-			speedElement.y += centerCollisionElement.y*element.moving.scaleSpeed.y;
-		};
-
-		if (other.moving && other.moving.scaleSpeed)
-		{
-			speedOther.x += centerCollisionOther.x*other.moving.scaleSpeed.x;
-			speedOther.y += centerCollisionOther.y*other.moving.scaleSpeed.y;
-		};
-
-		localSpeedElement = speedElement.getCoordinates(colVectors);
-		localSpeedOther = speedOther.getCoordinates(colVectors);
-
-		var elementMass = element.fixedPoint ? Infinity:element.solid.mass;
-		var otherMass = other.fixedPoint ? Infinity:other.solid.mass;
-		var elementMOI = element.fixed ? Infinity:element.solid.getMomentOfInertia();
-		var otherMOI = other.fixed ? Infinity:other.solid.getMomentOfInertia();
-
-		var F = element.solid.collisionCoefficient * other.solid.collisionCoefficient * 2 *
-			(localSpeedOther.v - localSpeedElement.v 
-					+ other.moving.speed.angle * otherRot.z 
-					- element.moving.speed.angle * elementRot.z)
-			/( 1/otherMass + 1/elementMass + otherRot.z*otherRot.z/otherMOI + elementRot.z*elementRot.z/elementMOI );
-
-		element.moving.speed.x += F/elementMass*colVectors.v.x;
-		element.moving.speed.y += F/elementMass*colVectors.v.y;
-		
-		other.moving.speed.x -= F/otherMass*colVectors.v.x;
-		other.moving.speed.y -= F/otherMass*colVectors.v.y;
-		
-		element.moving.speed.angle += F * l1 / elementMOI;
-		other.moving.speed.angle -= F * l2 / otherMOI;				
-	};
-
-	var hasCollided = function(element, otherElement)
-	{
-		var elementEdges = element.getRealEdges();
-		var otherEdges = otherElement.getRealEdges();
-		
-		if(elementEdges.box.radius + otherEdges.box.radius < element.getDistance(otherElement.x, otherElement.y))
-			return false;
-			
-		if (elementEdges.box.right < otherEdges.box.left)
-			return false;
-
-		if (otherEdges.box.right < elementEdges.box.left)
-			return false;
-
-		if (elementEdges.box.bottom < otherEdges.box.top)
-			return false;
-
-		if (otherEdges.box.bottom < elementEdges.box.top)
-			return false;
-		
-		var wasIn = undefined;
-		var previousEdge = undefined;
-
-		var collisionSegments = [];
-		var collisionPoints = 0;
-		elementEdges.edges.forEach(function(realEdge){
-			var isIn = otherElement.isPointInElementEdges(realEdge.x, realEdge.y);
-			if (wasIn != undefined && wasIn != isIn)
-			{
-				collisionPoints++;
-				if(wasIn)
-				{	
-					collisionSegments.push({A:previousEdge, B:realEdge});
-				}
-				else
-				{
-					collisionSegments.push({A:realEdge, B:previousEdge});					
-				}
-			}
-			wasIn = isIn;
-			previousEdge = realEdge;
+				var toCheck = {
+					checkTimes:0,
+					e1:e1,
+					e2:e2,  //e2.id>e1.id, always
+					status:undefined};
+				
+				collisionsMatrix[e1.id]=collisionsMatrix[e1.id]||[];
+				collisionsMatrix[e2.id]=collisionsMatrix[e2.id]||[];
+				collisionsMatrix[e1.id][e2.id] = collisionsMatrix[e2.id][e1.id] = toCheck;
+				
+				collisionsToCheck.push(toCheck);
+			});
 		});
-		
-		
-		//close the loop;
-		var firstEdge = elementEdges.edges[0];
-		var firstIn = otherElement.isPointInElementEdges(firstEdge.x, firstEdge.y);
-		if (wasIn != firstIn)
-		{
-			collisionPoints++;
-			if(wasIn)
-			{	
-				collisionSegments.push({A:previousEdge, B:firstEdge});
-			}
-			else
-			{
-				collisionSegments.push({A:firstEdge, B:previousEdge});
-			}
-		}
+	});
+	
+	//console.log('Broad phase : ' + collisionsToCheck.length + ' collisions to check');
+};
 
-//		if (collisionPoints<2)
-	//		return;
+CollisionSolver.prototype.processNarrowPhase = function(collisionsMatrix, collisionsToCheck){
+	
+	while(collisionsToCheck.length>0)
+	{
+		// more effective not to pass arguments?
+		this.checkForCollision(collisionsToCheck.shift(), collisionsMatrix, collisionsToCheck);
+	};		
 
-		if (collisionSegments.length < 2)
-			return false;		
-		
-		var collisionPoints = collisionSegments.map(function(s){
-			while (Math.abs(s.A.x - s.B.x)>1 || Math.abs(s.A.y - s.B.y)>1)
-			{
-				var x = (s.A.x + s.B.x)/2;
-				var y = (s.A.y + s.B.y)/2;
-				if (otherElement.isPointInElementEdges(x, y))
-				{
-					s.A = {x:x,y:y};
-				}
-				else
-				{
-					s.B = {x:x,y:y};
-				}
-			}
-			return {x:(s.A.x+s.B.x)/2,y:(s.A.y+s.B.y)/2};
-			});
+	// fill in directly while checking collisions ? let them stay in collisionsToCheck for example?
+	var collisions=[];
+	collisionsMatrix.forEach(function(column){
+		column.forEach(function(c){
+			if (!c.status)
+				return;
+			collisions.push(c);
+			c.status = undefined;			
+		});
+	});
+	return collisions;		
+};
+
+CollisionSolver.prototype.checkForCollision = function(c, collisionsMatrix, collisionsToCheck){
+	
+	//console.log('Checking collision ' + c.e1.id + ' at ' + round(c.e1.moving.dt) + ' /' + c.e2.id + ' at ' + round(c.e2.moving.dt) + ' for the ' + (++c.checkTimes) + '. time');
+
+	if (c.status !== undefined)
+		return; // already handled - can this really happen, check.
+	
+	if (!c.e1.moving.dt  && !c.e2.moving.dt)
+		return;
+
+//	var logInfo = round(currentTime) + ': ' + c.e1.id + '('+ round(c.e1.moving.dt) +') /' + c.e2.id + '('+ round(c.e2.moving.dt)+') : ';
+					
+	var collision = this.getCollision(c.e1,c.e2); // must send speed too... try with the currrent one.
 				
-		updateAfterCollision(element, otherElement, collisionPoints);
+	if (!collision.collided)
+	{
+//		c.e1.history.unshift(logInfo + ' no collision at ' + round(c.e1.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
+//		c.e2.history.unshift(logInfo + ' no collision at ' + round(c.e2.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
+		collisionsMatrix[c.e1.id][c.e2.id].status = collisionsMatrix[c.e2.id][c.e1.id].status = false;
 		
-		return true;
-	};
+		collisionsMatrix[c.e1.id][c.e2.id].checkedDt1 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt1 =  c.e1.moving.dt;
+		collisionsMatrix[c.e1.id][c.e2.id].checkedDt2 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt2 =  c.e2.moving.dt;
+		return;
+	}
 
-	this.solveCollision = function(element)
-	{			
-		return element
-			.controller
-			.elements
-			.filter(function(e){return e.id != element.id && e.solid && !e.duplicable;})
-			.every(
-			function(other)
-			{				
-				return !hasCollided(element, other);
-			});
+//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
+//		console.log('Collision ' + c.e1.id + ' at ' + round(c.e1.moving.dt) + ' /' + c.e2.id + ' at ' + round(c.e2.moving.dt) + ' for the ' + (++c.checkTimes) + '. time');
+
+//	c.e1.addHistory(logInfo + ' collision at ' + round(c.e1.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
+//	c.e2.addHistory(logInfo + ' collision at ' + round(c.e2.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
+
+	collisionsMatrix[c.e1.id][c.e2.id].status =  collisionsMatrix[c.e2.id][c.e1.id].status = true;				
+	collisionsMatrix[c.e1.id][c.e2.id].collisionPoints = collisionsMatrix[c.e2.id][c.e1.id].collisionPoints =  collision.collisionPoints;
+
+//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
+//		console.log('Before fixing overlap ' + c.e1.id + ' at ' + round(c.e1.position.y) + ' /' + c.e2.id + ' at ' + round(c.e2.position.y));
+
+	this.moveOutOfOverlap(c.e1, c.e2);
+
+//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
+//		console.log('After fixing overlap ' + c.e1.id + ' at ' + round(c.e1.position.y) + ' /' + c.e2.id + ' at ' + round(c.e2.position.y));
+
+	collisionsMatrix[c.e1.id][c.e2.id].checkedDt1 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt1 =  c.e1.moving.dt;
+	collisionsMatrix[c.e1.id][c.e2.id].checkedDt2 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt2 =  c.e2.moving.dt;
+	
+	this.requeuePossibleCollisions(collisionsMatrix, collisionsToCheck, c.e1);
+	this.requeuePossibleCollisions(collisionsMatrix, collisionsToCheck, c.e2);		
+};
+
+CollisionSolver.prototype.getCollision = function(element, otherElement) {
+//	var start = new Date().getTime();
+	/*
+	 * nee to use new-old version
+	var realBox = element.getRealBox();
+	var otherRealBox = otherElement.getRealBox();
+	
+	// broad stuff 
+	if (realBox.right < otherRealBox.left)
+		return { collided: false};
+
+	if (otherRealBox.right < realBox.left)
+		return { collided: false};
+
+	if (realBox.bottom < otherRealBox.top)
+		return { collided: false};
+
+	if (otherRealBox.bottom < realBox.top)
+		return { collided: false};
+*/
+	var collisionPoints = [];
+
+	if ((element.position.x-otherElement.position.x)*(element.position.x-otherElement.position.x)+(element.position.y-otherElement.position.y)*(element.position.y-otherElement.position.y)<20*20)
+	{
+		var col = { x:(otherElement.position.x+element.position.x)/2,
+					y:(otherElement.position.y+element.position.y)/2};
+		collisionPoints.push({x:col.x-5, y:col.y});
+		collisionPoints.push({x:col.x+5, y:col.y});
+	}
+		
+		
+	if (collisionPoints.length < 2)
+	{
+		//console.log("No collision. Time: " + (new Date().getTime()-start));
+		return { collided: false};
+	}
+	
+	//console.log("Collision. Total time find+update: " + (new Date().getTime()-start));
+
+	return {
+		collided: true,
+		collisionPoints:collisionPoints
 	};
 };
+
+CollisionSolver.prototype.moveOutOfOverlap = function(e1, e2) {
+	var steps = 1;
+
+	// no justification - testing.
+	/*
+	e1.moving = e1.moving.updateMove(0);
+	e2.moving = e2.moving.updateMove(0);
+	
+	return;
+*/
+	// Input: e1 and e2 overlap in their currentDt
+	// Out: update currentDt and moving into an non-overlaping position. dt goes always down
+	// See later, drop for the moment - CollisionMatrix to contain the most actual collisionInfo => needed really?
+	
+	// scenario 1: same currentDt 
+	if (Math.abs(e1.moving.dt - e2.moving.dt)<0.0001)
+	{
+		this.moveOutOfOverlapCommonDt(e1, e2);
+	}
+	else
+	{
+		var highestDtElement = (e1.moving.dt>e2.moving.dt)?e1:e2;
+		var lowestDtElement = (e1.moving.dt>e2.moving.dt)?e2:e1;
+		
+		var highestDt  = highestDtElement.moving.dt;			
+		var lowestDt = lowestDtElement.moving.dt;
+
+		highestDtElement.moving.updatePosition(lowestDt);
+						
+		collision = this.getCollision(highestDtElement,lowestDtElement);
+		
+		if (collision.collided) {
+			// scenario 2a: different currentDt, do collide at minimum of the 2 => common dt to fin between 0 and lowestDt
+			// both moved at lowestDt already
+			this.moveOutOfOverlapCommonDt(e1, e2);				
+		} else {
+			// scenario 2b: different currentDt, do no collide at minimum of the 2. => only update highest dt to find non-collision				
+			highestDtElement.moving.updatePosition(highestDt);
+			this.moveOutOfOverlapDifferentDt(highestDtElement, lowestDtElement);				
+		}
+	}
+};
+
+CollisionSolver.prototype.moveOutOfOverlapCommonDt = function(e1, e2) {
+	var steps=1;
+	// Input: e1 and e2 overlap in their currentDt, which is the same
+	// Out: update currentDt and moving into an non-overlaping position.
+
+//	console.log('Fixing overlap - common dt -for ' + e1.id + '/' + e2.id);
+
+	var okDt = 0;
+	var collidedDt = Math.min(e1.moving.dt, e2.moving.dt); // in case not perfectly equal.
+	var testDt;
+	var collision;
+	
+	var step = steps; // tood, use distance or stuff to refine.
+	while (step>0)
+	{
+		step--;
+
+		testDt = (okDt + collidedDt)/2;	
+		
+		e1.moving.updatePosition(testDt);
+		e2.moving.updatePosition(testDt);
+						
+		collision = this.getCollision(e1,e2);
+		
+		if (collision.collided) { 
+			collidedDt = testDt; 
+		} else { 
+			okDt = testDt;
+		}
+	}
+	
+	e1.moving.updatePosition(okDt);
+	e2.moving.updatePosition(okDt);
+};
+
+CollisionSolver.prototype.moveOutOfOverlapDifferentDt = function(toUpdate, fixed) {
+	// Input: e1 and e2 overlap in their currentDt, but not at fixed.dt. Find the correct value for toUpdate
+	var steps = 1;
+	var okDt = fixed.moving.dt;	
+	var collidedDt = toUpdate.moving.dt; 
+
+	var testDt;
+	var collision;
+	
+	var step = steps; // tood, use distance or stuff to refine.
+	while (step>0)
+	{
+		step--;
+
+		testDt = (okDt + collidedDt)/2;	
+		
+		toUpdate.moving.updatePosition(testDt);
+						
+		collision = this.getCollision(toUpdate,fixed);
+		
+		if (collision.collided) { collidedDt = testDt; } else { okDt = testDt;}		
+	}
+	
+	toUpdate.moving.updatePosition(okDt);
+};
+
+CollisionSolver.prototype.getCollisionPoint = function(edges)
+{		
+	var d,dmax = 0;
+	var theMax = {i:0, j:edges.length-1};
+	for (var i = 1; i<edges.length; i++)
+	{
+		for (var j = i+1; j<edges.length; j++)
+		{
+			var dx = edges[i].x-edges[j].x;
+			var dy = edges[i].y-edges[j].y;
+			d = Math.sqrt(dx*dx+dy*dy);
+			if (d>dmax)
+			{
+				dmax=d;
+				theMax.i = i;
+				theMax.j = j;
+			};
+		};																			
+	};
+
+	var point1 = edges[theMax.i];
+	var point2 = edges[theMax.j];
+	
+	return {
+		x:(point1.x + point2.x)/2, 
+		y:(point1.y + point2.y)/2, 
+		vectors: vector.getUnitVectors(point1.x, point1.y,  point2.x , point2.y)};			
+};
+
+CollisionSolver.prototype.getCollisionDetails = function (element, other, collisionPoints)
+{
+	if (element.solid.mass == Infinity && other.solid.mass == Infinity)
+	{
+		return;
+	}
+
+	var 
+		colVectors, speedElement, speedOther, localSpeedElement, localSpeedOther, centerCollisionElement,l1,
+		centerCollisionOther,l2;
+	
+	var collisionPoint = this.getCollisionPoint(collisionPoints);
+
+	//console.log("collisionPoint summary : " + collisionPoint.x + "," + collisionPoint.y);
+
+	colVectors = collisionPoint.vectors;
+		
+	centerCollisionElement = new vector.Vector(collisionPoint.x-element.position.x, collisionPoint.y-element.position.y);								
+	l1 = vector.vectorProduct(centerCollisionElement, colVectors.v).z;		
+
+	centerCollisionOther = new vector.Vector(collisionPoint.x-other.position.x, collisionPoint.y-other.position.y);								
+	l2= vector.vectorProduct(centerCollisionOther, colVectors.v).z;		
+
+	var elementRot = vector.vectorProduct(
+			centerCollisionElement,
+			colVectors.v);	
+
+	var otherRot = vector.vectorProduct(
+			centerCollisionOther,
+			colVectors.v);	
+
+	speedElement = element.moving ? new vector.Vector(
+		element.moving.speed?element.moving.speed.x:0, 
+		element.moving.speed?element.moving.speed.y:0)
+	: new vector.Vector(0,0);
+	
+	speedOther = other.moving ? new vector.Vector(
+		other.moving.speed?other.moving.speed.x:0, 
+		other.moving.speed?other.moving.speed.y:0):
+			new vector.Vector(0,0);
+
+	if (element.moving && element.moving.scaleSpeed)
+	{
+		speedElement.x += centerCollisionElement.x*element.moving.scaleSpeed.x;
+		speedElement.y += centerCollisionElement.y*element.moving.scaleSpeed.y;
+	};
+
+	if (other.moving && other.moving.scaleSpeed)
+	{
+		speedOther.x += centerCollisionOther.x*other.moving.scaleSpeed.x;
+		speedOther.y += centerCollisionOther.y*other.moving.scaleSpeed.y;
+	};
+
+	localSpeedElement = speedElement.getCoordinates(colVectors);
+	localSpeedOther = speedOther.getCoordinates(colVectors);
+
+	var elementMass = element.fixedPoint ? Infinity:element.solid.mass;
+	var otherMass = other.fixedPoint ? Infinity:other.solid.mass;
+	var elementMOI = element.fixed ? Infinity:element.solid.getMomentOfInertia();
+	var otherMOI = other.fixed ? Infinity:other.solid.getMomentOfInertia();
+	
+	var F = element.solid.collisionCoefficient * other.solid.collisionCoefficient * 2 *
+		(localSpeedOther.v - localSpeedElement.v 
+				+ other.moving.speed.angle * otherRot.z 
+				- element.moving.speed.angle * elementRot.z)
+		/( 1/otherMass + 1/elementMass + otherRot.z*otherRot.z/otherMOI + elementRot.z*elementRot.z/elementMOI );
+
+	return {
+		e1:{
+			dSpeedX: F/elementMass*colVectors.v.x,
+			dSpeedY: F/elementMass*colVectors.v.y,
+			dSpeedAngle: F * l1 / elementMOI},
+		e2:{
+			dSpeedX: -F/otherMass*colVectors.v.x,
+			dSpeedY: -F/otherMass*colVectors.v.y,
+			dSpeedAngle:- F * l2 / otherMOI}
+	};
+};
+
+CollisionSolver.prototype.requeuePossibleCollisions = function(collisionsMatrix, collisionsToCheck, e)
+{				
+	collisionsMatrix[e.id]
+	.filter(function(cell){ return cell.status !== undefined && ((cell.e1.id==e.id && cell.checkedDt1>e.moving.dt && cell.checkedDt2>0)||(cell.e2.id==e.id && cell.checkedDt2>e.moving.dt && cell.checkedDt1>0))})
+		.forEach(function(cell){
+			collisionsMatrix[cell.e1.id][cell.e2.id].status = 
+			collisionsMatrix[cell.e2.id][cell.e1.id].status = undefined;
+			collisionsToCheck.push(collisionsMatrix[cell.e1.id][cell.e2.id]);
+			//console.log('Rechecking collision ' + cell.e1.id + '/' + cell.e2.id + ' was handled at ' + round(cell.e1.id==e.id?cell.checkedDt1:cell.checkedDt2) + ', recheck for ' + e.id + ' at ' + round(e.moving.dt));
+		});
+};
+
+CollisionSolver.prototype.updateSpeeds = function(collisionList){
+	var collisionSolver = this;
+	
+	collisionList.forEach(function(c){
+	
+		
+		c.collisionDetails = collisionSolver.getCollisionDetails(c.e1, c.e2, c.collisionPoints);
+	
+	//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
+	//		console.log('Collision-dSpeedY ' + c.e1.id + ' - ' + round(c.collisionDetails.e1.dSpeedY) + ' /' + c.e2.id + ' at ' + round(c.collisionDetails.e2.dSpeedY));
+		
+		var stuff=0.99;
+
+		
+		if (Math.abs(c.collisionDetails.e1.dSpeedY)>0)
+		{
+			c.e1.moving.speed.x+=stuff*c.collisionDetails.e1.dSpeedX;
+			c.e1.moving.speed.y+=stuff*c.collisionDetails.e1.dSpeedY;
+			c.e1.moving.speed.angle+=stuff*c.collisionDetails.e1.dSpeedAngle;
+		}
+		if (Math.abs(c.collisionDetails.e2.dSpeedY)>0)
+		{
+			c.e2.moving.speed.x+=stuff*c.collisionDetails.e2.dSpeedX;
+			c.e2.moving.speed.y+=stuff*c.collisionDetails.e2.dSpeedY;
+			c.e2.moving.speed.angle+=stuff*c.collisionDetails.e2.dSpeedAngle;
+		}
+			
+	});
+};	
 
 exports.CollisionSolver = CollisionSolver;
