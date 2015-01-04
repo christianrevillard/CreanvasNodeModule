@@ -1,4 +1,5 @@
 var decorators = require("./Decorators");
+var elementTypes = require("./ElementTypes");
 var vector = require('./Vector');
 
 var Element = function(controller, elementTemplate) {
@@ -22,6 +23,11 @@ var Element = function(controller, elementTemplate) {
 			//console.log ('applying ' + keys[decorator]);
 			element.applyElementDecorator(keys[decorator], elementTemplate[keys[decorator]]);
 		}
+		// make this to a more basic stuff, or is this ok??
+		if (elementTypes[keys[decorator]]) {			
+			//console.log ('applying ' + keys[decorator]);
+			element.applyElementType(keys[decorator], elementTemplate[keys[decorator]]);
+		}
 	}
 };
 
@@ -29,55 +35,8 @@ var setIdentification = function(element, elementTemplate) {
 	element.name = elementTemplate.name;
 };
 
-var setImage = function(element, elementTemplate) {
-	
-	element.typeName = elementTemplate.typeName;
-
-	element.controller.waitingElements = element.controller.waitingElements || 0;
-	element.controller.waitingElements++;
-	console.log('Now waiting for ' + element.controller.waitingElements + ' elements');
-	element.controller.paused = true;
-
-	var setElementType = function()
-	{
-		var elementType = element.controller.elementTypes.filter(function(t){ return t.typeName == element.typeName})[0];
-		
-		if (elementType == undefined || elementType.boxData == undefined)
-		{
-			setTimeout(setElementType, 20);
-			console.log('Waiting for ' + element.typeName);
-			return;			
-		}
-		element.box = {};
-		// elementTemplate.box - mandatory
-		element.box.top = elementType.boxData.top;
-		element.box.left =elementType.boxData.left;
-		element.box.bottom = elementType.boxData.bottom;
-		element.box.right = elementType.boxData.right;
-		element.box.width = elementType.boxData.width;
-		element.box.height = elementType.boxData.height;
-		element.controller.waitingElements = element.controller.waitingElements || 0;
-		element.controller.waitingElements--;
-		element.controller.paused = element.controller.waitingElements>0;
-
-		console.log('Still waiting for ' + element.controller.waitingElements + ' elements');
-		if (element.controller.waitingElements<=0)
-		{
-			console.log("READY FOR START !!!!!!!!!!!!!!!");
-			console.log("paused: " + element.controller.paused);
-		}
-		
-		element.boundaryBox = element.getBoundaryBox(element.position);
-	};
-	setTimeout(setElementType, 0);
-	
-	/* todo later
-	if (elementTemplate["isPointInElementEdges"])
-		element.isPointInElementEdges = elementTemplate["isPointInElementEdges"];
-
-	if (elementTemplate["getEdges"])
-		element.getEdges = elementTemplate["getEdges"];
-		*/
+var setImage = function(element, elementTemplate) {	
+	element.clientType = elementTemplate.clientType;
 };
 
 var setPosition = function(element, elementTemplate) {
@@ -114,7 +73,7 @@ Element.prototype.getUpdatedClientData = function(){
 	updatedData = this.checkForUpdate(updatedData, 'angle', this.position.angle);
 	updatedData = this.checkForUpdate(updatedData, 'scaleX', this.scale.x);
 	updatedData = this.checkForUpdate(updatedData, 'scaleY', this.scale.y);
-	updatedData = this.checkForUpdate(updatedData, 'typeName', this.typeName);
+	updatedData = this.checkForUpdate(updatedData, 'typeName', this.clientType);
 	return updatedData;
 };
 
@@ -126,6 +85,17 @@ Element.prototype.applyElementDecorator = function(decoratorType, decoratorSetti
 		decorator.applyTo(this, decoratorSettings);
 	} else {
 		console.log("applyElementDecorator: Not found: " + decoratorType);
+	}
+};
+
+Element.prototype.applyElementType = function(elementType, elementSettings) {
+
+	var elementType = elementTypes[elementType];
+
+	if (elementType) {
+		elementType.applyTo(this, elementSettings);
+	} else {
+		console.log("applyElementType: Not found: " + elementType);
 	}
 };
 
@@ -268,7 +238,7 @@ Element.prototype.getElementXYFromRealXY = function(real)
 {		
 	var element = this;
 
-	var elementType = element.controller.elementTypes.filter(function(t){ return t.typeName == element.typeName})[0];
+	//var elementType = element.controller.elementTypes.filter(function(t){ return t.typeName == element.typeName})[0];
 
 	return {
 		x: Math.round((real.x - element.position.x)/element.scale.x*Math.cos(element.position.angle) 
@@ -285,6 +255,7 @@ Element.prototype.getElementXYFromRealXY = function(real)
 			};*/
 };
 
+/*
 Element.prototype.getEdges = function()
 {
 	if (this.edges && this.edges.length>0)
@@ -298,31 +269,27 @@ Element.prototype.getEdges = function()
 		return [];
 
 	return this.edges = elementType[0].edges; 	
-}
+}*/
 
 Element.prototype.getDistance = function(x,y)
 {
 	return Math.sqrt((this.position.x-x)*(this.position.x-x) + (this.position.y-y)*(this.position.y-y));
 };
 
+/*
 Element.prototype.getRealCornerEdges  = function()
 {
 	return this.getRealEdges().edges.filter(function(edge){ return edge.isCorner;});
 };
-
+*/
 // the new
 Element.prototype.getBoundaryBox  = function()
 {
-	//circle here - centered - no scale - radius 50 . TODO:polynom
-	var r = 10;
-	return {
-		left: this.position.x - r,
-		right: this.position.x + r,
-		top: this.position.y - r,
-		bottom: this.position.y + r,		
-	};
+	if (this.elementType)
+		return this.elementType.getBoundaryBox();
 };
 
+/*
 Element.prototype.getRealEdges  = function()
 {
 	var element = this;
@@ -364,7 +331,8 @@ Element.prototype.getRealEdges  = function()
 		
 	return this.realEdges
 };
-
+*/
+/*
 Element.prototype.getRealBox  = function()
 {
 	var element = this;
@@ -400,6 +368,6 @@ Element.prototype.getRealBox  = function()
 	}
 	
 	return this.realBox;
-};
+};*/
 
 exports.Element = Element;

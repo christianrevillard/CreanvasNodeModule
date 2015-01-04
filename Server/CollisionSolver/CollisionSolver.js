@@ -1,4 +1,5 @@
-var vector = require('./Vector');
+var vector = require('../Vector');
+var collisionFactory = require('./CollisionFactory');
 
 var round = function(x){
 	return Math.round(10000*x)/10000;
@@ -6,45 +7,31 @@ var round = function(x){
 
 var CollisionSolver = function(controller) {				
 	this.controller = controller;
-//	this.broadTiles=[];	
 	this.broadTilesWidth = 30; // client/configuration data
+	this.collisionFactory = new collisionFactory.CollisionFactory();
 };
 
-/*
-CollisionSolver.prototype.fillBroadTiles = function(width, height){
-	this.broadTiles=[];
-	for (var row=0;row<height/this.broadTilesWidth;row+=1) {
-		this.broadTiles[row] = this.broadTiles[row] || [];
-		for (var column=0;column<width/this.broadTilesWidth;column+=1) {		
-			this.broadTiles[column] = this.broadTiles[column] || { elements:[];};
-		}
-	}
-};*/
-
+/** 
+input: list of elements with uncommited moves (originalPosition/Scale property set)
+output: elements are updated with no overlap, 
+*/
 CollisionSolver.prototype.solveCollisions = function(elements){
-	// input: list of elements with uncommited moves (originalPosition/Scale property set)
-	// output: elements are updated with no overlap,
 	// return a list of collision (elements + dt, no points so we avoid finding points for obsolete ones!)
 	var start = (new Date()).getTime();
 	
 	var collisionsToCheck = [];
-	var collisionsMatrix = [];
 
-	this.processBroadPhase(collisionsMatrix, collisionsToCheck, elements);		
+	this.processBroadPhase(collisionsToCheck, elements);		
 
-//	console.log("To broad phase end : " + ((new Date()).getTime() - start));
-
-	var collisions = this.processNarrowPhase(collisionsMatrix, collisionsToCheck);		
-
-//	console.log("To narrow broad phase end : " + ((new Date()).getTime() - start));
+	var collisions = this.processNarrowPhase(collisionsToCheck, elements);		
 
 	return collisions;
 };
 
-CollisionSolver.prototype.processBroadPhase = function(collisionsMatrix, collisionsToCheck, elements){
+CollisionSolver.prototype.processBroadPhase = function(collisionsToCheck, elements){
 
 	//console.log('Broad phase for ' + elements.length + ' elements');
-	this.broadTiles=[]; //	this.fillBroadTiles(700,500); // to do config
+	this.broadTiles=[]; 
 	this.usedBroadTiles = [];
 	var collisionSolver = this;
 
@@ -61,38 +48,37 @@ CollisionSolver.prototype.processBroadPhase = function(collisionsMatrix, collisi
 				if (!collisionSolver.broadTiles[row][column])
 				{
 					collisionSolver.broadTiles[row][column] = { elements:[] };
-					collisionSolver.usedBroadTiles.push(collisionSolver.broadTiles[row][column]);
+				}
+				else if (collisionSolver.broadTiles[row][column].elements.length==1)
+				{
+					collisionSolver.usedBroadTiles.push(collisionSolver.broadTiles[row][column]);					
 				}
 				collisionSolver.broadTiles[row][column].elements.push(e);
 			}
 		}
 	});
 
-	//console.log('Broad phase :  ' + this.usedBroadTiles.length + ' tiles in use');
-
 	this.usedBroadTiles.forEach(function(tile){
-		if (tile.elements.length<2)
-			return;
 		tile.elements.forEach(function(e1){
 			tile.elements.filter(function(e){return e.id>e1.id;}).forEach(function(e2){
 
 				if (!e1.moving.dt && !e2.moving.dt)
 					return;
 				
-				if (collisionsMatrix[e1.id] && collisionsMatrix[e1.id][e2.id])
+				if (e1.collisions && e1.collisions[e2.id])
 					return;
+				
+				e1.collisions = e1.collisions || [];
+				e2.collisions = e2.collisions || [];
+				e1.collisions[e2.id] = { collisionWith: e2 };
+				e2.collisions[e1.id] = { collisionWith: e1 };
 
-				var toCheck = {
-					checkTimes:0,
+				collisionsToCheck.push({
 					e1:e1,
 					e2:e2,  //e2.id>e1.id, always
-					status:undefined};
-				
-				collisionsMatrix[e1.id]=collisionsMatrix[e1.id]||[];
-				collisionsMatrix[e2.id]=collisionsMatrix[e2.id]||[];
-				collisionsMatrix[e1.id][e2.id] = collisionsMatrix[e2.id][e1.id] = toCheck;
-				
-				collisionsToCheck.push(toCheck);
+					status:undefined,
+					collisionHandler: collisionSolver.collisionFactory.getCollisionHandler(e1, e2)
+				});
 			});
 		});
 	});
@@ -100,28 +86,32 @@ CollisionSolver.prototype.processBroadPhase = function(collisionsMatrix, collisi
 	//console.log('Broad phase : ' + collisionsToCheck.length + ' collisions to check');
 };
 
-CollisionSolver.prototype.processNarrowPhase = function(collisionsMatrix, collisionsToCheck){
+CollisionSolver.prototype.processNarrowPhase = function(collisionsToCheck, elements){
 	
 	while(collisionsToCheck.length>0)
 	{
 		// more effective not to pass arguments?
-		this.checkForCollision(collisionsToCheck.shift(), collisionsMatrix, collisionsToCheck);
+		this.checkForCollision(collisionsToCheck.shift(), collisionsToCheck);
 	};		
 
 	// fill in directly while checking collisions ? let them stay in collisionsToCheck for example?
 	var collisions=[];
-	collisionsMatrix.forEach(function(column){
-		column.forEach(function(c){
+	elements.forEach(function(e){
+		if (!e.collisions)
+			return;
+		e.collisions.forEach(function(c){
+			if (c.collisionWith.id<e.id)
+				return;
 			if (!c.status)
 				return;
-			collisions.push(c);
-			c.status = undefined;			
+			collisions.push({e1:e, e2:c.collisionWith, collisionPoints:c.collisionPoints});
 		});
+		e.collisions = null;
 	});
 	return collisions;		
 };
 
-CollisionSolver.prototype.checkForCollision = function(c, collisionsMatrix, collisionsToCheck){
+CollisionSolver.prototype.checkForCollision = function(c, collisionsToCheck){
 	
 	//console.log('Checking collision ' + c.e1.id + ' at ' + round(c.e1.moving.dt) + ' /' + c.e2.id + ' at ' + round(c.e2.moving.dt) + ' for the ' + (++c.checkTimes) + '. time');
 
@@ -130,92 +120,30 @@ CollisionSolver.prototype.checkForCollision = function(c, collisionsMatrix, coll
 	
 	if (!c.e1.moving.dt  && !c.e2.moving.dt)
 		return;
-
-//	var logInfo = round(currentTime) + ': ' + c.e1.id + '('+ round(c.e1.moving.dt) +') /' + c.e2.id + '('+ round(c.e2.moving.dt)+') : ';
 					
-	var collision = this.getCollision(c.e1,c.e2); // must send speed too... try with the currrent one.
+	var collision = c.collisionHandler.getCollision(c.e1, c.e2); // must send speed too... try with the currrent one.
 				
 	if (!collision.collided)
 	{
-//		c.e1.history.unshift(logInfo + ' no collision at ' + round(c.e1.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
-//		c.e2.history.unshift(logInfo + ' no collision at ' + round(c.e2.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
-		collisionsMatrix[c.e1.id][c.e2.id].status = collisionsMatrix[c.e2.id][c.e1.id].status = false;
-		
-		collisionsMatrix[c.e1.id][c.e2.id].checkedDt1 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt1 =  c.e1.moving.dt;
-		collisionsMatrix[c.e1.id][c.e2.id].checkedDt2 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt2 =  c.e2.moving.dt;
+		c.e1.collisions[c.e2.id].status = c.e2.collisions[c.e1.id].status = false;		
+		c.e1.collisions[c.e2.id].checkedDt = c.e1.moving.dt;
+		c.e2.collisions[c.e1.id].checkedDt = c.e2.moving.dt;
 		return;
 	}
 
-//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
-//		console.log('Collision ' + c.e1.id + ' at ' + round(c.e1.moving.dt) + ' /' + c.e2.id + ' at ' + round(c.e2.moving.dt) + ' for the ' + (++c.checkTimes) + '. time');
+	c.e1.collisions[c.e2.id].status = c.e2.collisions[c.e1.id].status = true;
+	c.e1.collisions[c.e2.id].collisionPoints = c.e2.collisions[c.e1.id].collisionPoints = collision.collisionPoints;
 
-//	c.e1.addHistory(logInfo + ' collision at ' + round(c.e1.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
-//	c.e2.addHistory(logInfo + ' collision at ' + round(c.e2.moving.dt) + ' : ' + Math.abs(round(c.e1.moving.position.y-c.e2.moving.position.y)));
+	this.moveOutOfOverlap(c.collisionHandler, c.e1, c.e2);
 
-	collisionsMatrix[c.e1.id][c.e2.id].status =  collisionsMatrix[c.e2.id][c.e1.id].status = true;				
-	collisionsMatrix[c.e1.id][c.e2.id].collisionPoints = collisionsMatrix[c.e2.id][c.e1.id].collisionPoints =  collision.collisionPoints;
+	c.e1.collisions[c.e2.id].checkedDt = c.e1.moving.dt;
+	c.e2.collisions[c.e1.id].checkedDt = c.e2.moving.dt;
 
-//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
-//		console.log('Before fixing overlap ' + c.e1.id + ' at ' + round(c.e1.position.y) + ' /' + c.e2.id + ' at ' + round(c.e2.position.y));
-
-	this.moveOutOfOverlap(c.e1, c.e2);
-
-//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
-//		console.log('After fixing overlap ' + c.e1.id + ' at ' + round(c.e1.position.y) + ' /' + c.e2.id + ' at ' + round(c.e2.position.y));
-
-	collisionsMatrix[c.e1.id][c.e2.id].checkedDt1 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt1 =  c.e1.moving.dt;
-	collisionsMatrix[c.e1.id][c.e2.id].checkedDt2 = collisionsMatrix[c.e2.id][c.e1.id].checkedDt2 =  c.e2.moving.dt;
-	
-	this.requeuePossibleCollisions(collisionsMatrix, collisionsToCheck, c.e1);
-	this.requeuePossibleCollisions(collisionsMatrix, collisionsToCheck, c.e2);		
+	this.requeuePossibleCollisions(collisionsToCheck, c.e1);
+	this.requeuePossibleCollisions(collisionsToCheck, c.e2);		
 };
 
-CollisionSolver.prototype.getCollision = function(element, otherElement) {
-//	var start = new Date().getTime();
-	/*
-	 * nee to use new-old version
-	var realBox = element.getRealBox();
-	var otherRealBox = otherElement.getRealBox();
-	
-	// broad stuff 
-	if (realBox.right < otherRealBox.left)
-		return { collided: false};
-
-	if (otherRealBox.right < realBox.left)
-		return { collided: false};
-
-	if (realBox.bottom < otherRealBox.top)
-		return { collided: false};
-
-	if (otherRealBox.bottom < realBox.top)
-		return { collided: false};
-*/
-	var collisionPoints = [];
-
-	if ((element.position.x-otherElement.position.x)*(element.position.x-otherElement.position.x)+(element.position.y-otherElement.position.y)*(element.position.y-otherElement.position.y)<20*20)
-	{
-		var col = { x:(otherElement.position.x+element.position.x)/2,
-					y:(otherElement.position.y+element.position.y)/2};
-		collisionPoints.push({x:col.x-5, y:col.y});
-		collisionPoints.push({x:col.x+5, y:col.y});
-	}
-		
-		
-	if (collisionPoints.length < 2)
-	{
-		//console.log("No collision. Time: " + (new Date().getTime()-start));
-		return { collided: false};
-	}
-	
-	//console.log("Collision. Total time find+update: " + (new Date().getTime()-start));
-
-	return {
-		collided: true,
-		collisionPoints:collisionPoints
-	};
-};
-
-CollisionSolver.prototype.moveOutOfOverlap = function(e1, e2) {
+CollisionSolver.prototype.moveOutOfOverlap = function(collisionHandler,e1, e2) {
 	var steps = 1;
 
 	// no justification - testing.
@@ -232,7 +160,7 @@ CollisionSolver.prototype.moveOutOfOverlap = function(e1, e2) {
 	// scenario 1: same currentDt 
 	if (Math.abs(e1.moving.dt - e2.moving.dt)<0.0001)
 	{
-		this.moveOutOfOverlapCommonDt(e1, e2);
+		this.moveOutOfOverlapCommonDt(collisionHandler, e1, e2);
 	}
 	else
 	{
@@ -244,21 +172,21 @@ CollisionSolver.prototype.moveOutOfOverlap = function(e1, e2) {
 
 		highestDtElement.moving.updatePosition(lowestDt);
 						
-		collision = this.getCollision(highestDtElement,lowestDtElement);
+		collision = collisionHandler.getCollision(highestDtElement,lowestDtElement);
 		
 		if (collision.collided) {
 			// scenario 2a: different currentDt, do collide at minimum of the 2 => common dt to fin between 0 and lowestDt
 			// both moved at lowestDt already
-			this.moveOutOfOverlapCommonDt(e1, e2);				
+			this.moveOutOfOverlapCommonDt(collisionHandler, e1, e2);				
 		} else {
 			// scenario 2b: different currentDt, do no collide at minimum of the 2. => only update highest dt to find non-collision				
 			highestDtElement.moving.updatePosition(highestDt);
-			this.moveOutOfOverlapDifferentDt(highestDtElement, lowestDtElement);				
+			this.moveOutOfOverlapDifferentDt(collisionHandler, highestDtElement, lowestDtElement);				
 		}
 	}
 };
 
-CollisionSolver.prototype.moveOutOfOverlapCommonDt = function(e1, e2) {
+CollisionSolver.prototype.moveOutOfOverlapCommonDt = function(collisionHandler, e1, e2) {
 	var steps=1;
 	// Input: e1 and e2 overlap in their currentDt, which is the same
 	// Out: update currentDt and moving into an non-overlaping position.
@@ -280,7 +208,7 @@ CollisionSolver.prototype.moveOutOfOverlapCommonDt = function(e1, e2) {
 		e1.moving.updatePosition(testDt);
 		e2.moving.updatePosition(testDt);
 						
-		collision = this.getCollision(e1,e2);
+		collision = collisionHandler.getCollision(e1,e2);
 		
 		if (collision.collided) { 
 			collidedDt = testDt; 
@@ -293,7 +221,7 @@ CollisionSolver.prototype.moveOutOfOverlapCommonDt = function(e1, e2) {
 	e2.moving.updatePosition(okDt);
 };
 
-CollisionSolver.prototype.moveOutOfOverlapDifferentDt = function(toUpdate, fixed) {
+CollisionSolver.prototype.moveOutOfOverlapDifferentDt = function(collisionHandler, toUpdate, fixed) {
 	// Input: e1 and e2 overlap in their currentDt, but not at fixed.dt. Find the correct value for toUpdate
 	var steps = 1;
 	var okDt = fixed.moving.dt;	
@@ -311,7 +239,7 @@ CollisionSolver.prototype.moveOutOfOverlapDifferentDt = function(toUpdate, fixed
 		
 		toUpdate.moving.updatePosition(testDt);
 						
-		collision = this.getCollision(toUpdate,fixed);
+		collision = collisionHandler.getCollision(toUpdate,fixed);
 		
 		if (collision.collided) { collidedDt = testDt; } else { okDt = testDt;}		
 	}
@@ -427,15 +355,21 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 	};
 };
 
-CollisionSolver.prototype.requeuePossibleCollisions = function(collisionsMatrix, collisionsToCheck, e)
+CollisionSolver.prototype.requeuePossibleCollisions = function(collisionsToCheck, e)
 {				
-	collisionsMatrix[e.id]
-	.filter(function(cell){ return cell.status !== undefined && ((cell.e1.id==e.id && cell.checkedDt1>e.moving.dt && cell.checkedDt2>0)||(cell.e2.id==e.id && cell.checkedDt2>e.moving.dt && cell.checkedDt1>0))})
-		.forEach(function(cell){
-			collisionsMatrix[cell.e1.id][cell.e2.id].status = 
-			collisionsMatrix[cell.e2.id][cell.e1.id].status = undefined;
-			collisionsToCheck.push(collisionsMatrix[cell.e1.id][cell.e2.id]);
-			//console.log('Rechecking collision ' + cell.e1.id + '/' + cell.e2.id + ' was handled at ' + round(cell.e1.id==e.id?cell.checkedDt1:cell.checkedDt2) + ', recheck for ' + e.id + ' at ' + round(e.moving.dt));
+	var collisionSolver = this;
+
+	e
+	.collisions
+	.filter(function(c){ return c.status !== undefined && c.checkedDt>e.moving.dt; }) //&& c.collisionWith.moving.dt>0
+		.forEach(function(c){
+			c.status = c.collisionWith.collisions[e.id].status = undefined;
+
+			collisionsToCheck.push({
+				e1: e,
+				e2: c.collisionWith,
+				status: undefined,
+				collisionHandler: collisionSolver.collisionFactory.getCollisionHandler(e, c.collisionWith)});
 		});
 };
 
@@ -443,29 +377,21 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 	var collisionSolver = this;
 	
 	collisionList.forEach(function(c){
-	
 		
 		c.collisionDetails = collisionSolver.getCollisionDetails(c.e1, c.e2, c.collisionPoints);
-	
-	//	if (( c.e1.id>=72 && c.e1.id<=72) || ( c.e2.id>=72 && c.e2.id<=72))
-	//		console.log('Collision-dSpeedY ' + c.e1.id + ' - ' + round(c.collisionDetails.e1.dSpeedY) + ' /' + c.e2.id + ' at ' + round(c.collisionDetails.e2.dSpeedY));
-		
-		var stuff=0.99;
-
-		
+			
 		if (Math.abs(c.collisionDetails.e1.dSpeedY)>0)
 		{
-			c.e1.moving.speed.x+=stuff*c.collisionDetails.e1.dSpeedX;
-			c.e1.moving.speed.y+=stuff*c.collisionDetails.e1.dSpeedY;
-			c.e1.moving.speed.angle+=stuff*c.collisionDetails.e1.dSpeedAngle;
+			c.e1.moving.speed.x += c.collisionDetails.e1.dSpeedX;
+			c.e1.moving.speed.y += c.collisionDetails.e1.dSpeedY;
+			c.e1.moving.speed.angle += c.collisionDetails.e1.dSpeedAngle;
 		}
 		if (Math.abs(c.collisionDetails.e2.dSpeedY)>0)
 		{
-			c.e2.moving.speed.x+=stuff*c.collisionDetails.e2.dSpeedX;
-			c.e2.moving.speed.y+=stuff*c.collisionDetails.e2.dSpeedY;
-			c.e2.moving.speed.angle+=stuff*c.collisionDetails.e2.dSpeedAngle;
+			c.e2.moving.speed.x += c.collisionDetails.e2.dSpeedX;
+			c.e2.moving.speed.y += c.collisionDetails.e2.dSpeedY;
+			c.e2.moving.speed.angle += c.collisionDetails.e2.dSpeedAngle;
 		}
-			
 	});
 };	
 

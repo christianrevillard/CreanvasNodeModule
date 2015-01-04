@@ -1,4 +1,4 @@
-var collisionSolver = require('../CollisionSolver');
+var collisionSolver = require('../CollisionSolver/CollisionSolver'); // does not work, why??
 var moving = require("./Moving");
 
 var SolidElement = function(parent, solidData) {

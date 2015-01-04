@@ -350,6 +350,7 @@
 		
 		this.elementTypes.push({typeName:typeName, draw:draw});
 		
+		/*
 		this.emitToServer(
 				'registerEdges', 
 				{
@@ -360,6 +361,7 @@
 					"height": imageData == null ? null : imageData.height
 
 				});
+				*/
 	};
 
 	creanvas.NodeJsController.prototype.add  = function (elementTemplate)

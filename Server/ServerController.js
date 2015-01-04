@@ -1,4 +1,5 @@
 var serverElement = require("./ServerElement");
+//var collisionSolver = require('./CollisionSolver/CollisionSolver');
 
 var currentTime = 0;
 
@@ -9,6 +10,8 @@ var round = function(x){
 var Controller = function(applicationSocket, applicationInstance, autoStart) {
 	
 	var controller = this;
+
+	//controller.collisionSolver = new collisionSolver.CollisionSolver(controller);
 
 	controller.intervals = [];
 	
@@ -31,7 +34,6 @@ var Controller = function(applicationSocket, applicationInstance, autoStart) {
 	controller.applicationInstance = applicationInstance;
 
 	controller.elements = [];
-	controller.elementTypes = [];
 
 	console.log('Setting up for Creanvas');
 
@@ -235,7 +237,7 @@ Controller.prototype.addSocket = function(socket) {
 		});
 	});
 
-	socket.on('registerEdges', function(message) {
+/*	socket.on('registerEdges', function(message) {
 		var edgesData = JSON.parse(message);
 
 		console.log("Registering edges for " + edgesData.typeName);
@@ -403,7 +405,7 @@ Controller.prototype.addSocket = function(socket) {
 		
 		console.log("Registered boxData " + newType.boxData);
 
-	});
+	});*/
 };
 
 exports.Controller = Controller;
