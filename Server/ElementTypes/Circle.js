@@ -1,41 +1,39 @@
+console.log('Someone required a Circle here !');
+var serverElement = require('../ServerElement');
+
 /**
  * All elementType must have a 'type' property
  * Circle element
  * How to define an element as a circle?
  */
 
-var CircleElement = function(element, radius) {
-	this.parent = element;
-	this.radius = radius;
+var CircleElement = function(controller, elementTemplate) {
+	this.initialize(controller, elementTemplate);
+	this.radius = elementTemplate.radius;
+
+	// in use, common ?s
+	this.box = {};
+	this.box.top = -this.radius;
+	this.box.left = -this.radius;
+	this.box.bottom = this.radius;
+	this.box.right = this.radius;
+	this.box.width = 2*this.radius;
+	this.box.height = 2*this.radius;
+	this.boundaryBox = this.getBoundaryBox(this.position);
 };
+
+CircleElement.prototype = Object.create(serverElement.Element.prototype);
+
+CircleElement.prototype.circle = true;
 
 CircleElement.prototype.getBoundaryBox  = function()
 {
-	// missing: scale.
 	return {
-		left: this.parent.position.x - this.radius,
-		right: this.parent.position.x + this.radius,
-		top: this.parent.position.y - this.radius,
-		bottom: this.parent.position.y + this.radius
+		left: this.position.x - this.radius,
+		right: this.position.x + this.radius,
+		top: this.position.y - this.radius,
+		bottom: this.position.y + this.radius
 	};
 };
 
-var applyTo = function(element, circleData) {
-	
-	console.log("circle.applyTo: " + element.id);				
-
-//	element.elementType = "circle";
-	element.elementType = element.circle = new CircleElement(element, circleData.radius);						
-	
-	element.box = {};
-	element.box.top = -element.circle.radius;
-	element.box.left = -element.circle.radius;
-	element.box.bottom = element.circle.radius;
-	element.box.right = element.circle.radius;
-	element.box.width = 2*element.circle.radius;
-	element.box.height = 2*element.circle.radius;
-
-	element.boundaryBox = element.getBoundaryBox(element.position);
-};
-
-exports.applyTo = applyTo;
+exports.CircleElement = CircleElement;

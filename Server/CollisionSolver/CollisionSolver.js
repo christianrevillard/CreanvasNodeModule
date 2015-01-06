@@ -342,6 +342,19 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 				+ other.moving.speed.angle * otherRot.z 
 				- element.moving.speed.angle * elementRot.z)
 		/( 1/otherMass + 1/elementMass + otherRot.z*otherRot.z/otherMOI + elementRot.z*elementRot.z/elementMOI );
+	
+	/*
+	console.log('F1: ' + element.solid.collisionCoefficient);
+	console.log('F2: ' + localSpeedOther.v);
+	console.log('F3: ' + localSpeedElement.v); 
+	console.log('F4: ' + other.moving.speed.angle);
+	console.log('F5: ' + otherRot.z );
+	console.log('F6: ' + element.moving.speed.angle);
+	console.log('F7: ' + elementRot.z);
+	console.log('F8: ' + otherMass);
+	console.log('F9: ' + elementMass);
+	console.log('F0: ' + otherMOI );
+	console.log('F1: ' + elementMOI );*/
 
 	return {
 		e1:{

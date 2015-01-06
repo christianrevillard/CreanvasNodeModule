@@ -6,6 +6,7 @@ var CircleCircleCollision = function() {
 
 
 CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
+	
 	// expecting both to be circles, do we need to test it?	
 //	var start = new Date().getTime();
 	/*
@@ -32,7 +33,7 @@ CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
 		Math.sqrt(
 			(element.position.x-otherElement.position.x)*(element.position.x-otherElement.position.x)+
 			(element.position.y-otherElement.position.y)*(element.position.y-otherElement.position.y))
-		<(element.circle.radius + otherElement.circle.radius))
+		<(element.radius + otherElement.radius))
 	{
 		// TODO - using same radius at the moment, ok for testing so far
 		var col = { x:(otherElement.position.x+element.position.x)/2,
@@ -47,7 +48,7 @@ CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
 		return { collided: false};
 	}
 	
-	//console.log("Collision. Total time find+update: " + (new Date().getTime()-start));
+//	console.log("Collision. Total time find+update: " + (new Date().getTime()-start));
 	
 	// return directly correct point, with vectors and everything. TODO
 	return {

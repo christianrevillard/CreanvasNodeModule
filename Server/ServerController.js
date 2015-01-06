@@ -1,4 +1,18 @@
+console.log('Controller: requiring Element');
 var serverElement = require("./ServerElement");
+
+console.log('Controller: requiring AAB');
+var aab = require("./ElementTypes/AxeAlignedBox");
+
+console.log('cc.serverElement: ' + serverElement);
+console.log('cc.serverElement.Testing: ' + serverElement.Testing);
+console.log('cc.serverElement.Testing2: ' + serverElement.Testing2);
+console.log('cc.serverElement.Element: ' + serverElement.Element);
+
+var circle = require("./ElementTypes/Circle");
+
+
+
 //var collisionSolver = require('./CollisionSolver/CollisionSolver');
 
 var currentTime = 0;
@@ -10,7 +24,7 @@ var round = function(x){
 var Controller = function(applicationSocket, applicationInstance, autoStart) {
 	
 	var controller = this;
-
+	
 	//controller.collisionSolver = new collisionSolver.CollisionSolver(controller);
 
 	controller.intervals = [];
@@ -159,6 +173,19 @@ Controller.prototype.addElement = function(elementTemplate) {
 	var controller = this;
 
 	var element = new serverElement.Element(controller, elementTemplate);
+
+	controller.elements.push(element);
+
+	return element;
+};
+
+Controller.prototype.addCircle = function(elementTemplate) {
+	var controller = this;
+
+	var x= new aab.AxeAlignedBox(controller, elementTemplate);
+	console.log(x.id);
+	var element = new circle.CircleElement(controller, elementTemplate);
+	console.log(element.id);
 
 	controller.elements.push(element);
 

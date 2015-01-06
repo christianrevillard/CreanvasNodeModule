@@ -1,1 +1,1 @@
-this["circle"] = require("./ElementTypes/Circle");
+//this["circle"] = require("./ElementTypes/Circle");

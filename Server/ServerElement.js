@@ -3,7 +3,10 @@ var elementTypes = require("./ElementTypes");
 var vector = require('./Vector');
 
 var Element = function(controller, elementTemplate) {
-	
+	this.initialize(controller, elementTemplate);
+};
+
+Element.prototype.initialize = function(controller, elementTemplate) {
 	var element = this;
 
 	element.id = controller.elements.length + 1; 
@@ -24,10 +27,10 @@ var Element = function(controller, elementTemplate) {
 			element.applyElementDecorator(keys[decorator], elementTemplate[keys[decorator]]);
 		}
 		// make this to a more basic stuff, or is this ok??
-		if (elementTypes[keys[decorator]]) {			
+	/*	if (elementTypes[keys[decorator]]) {			
 			//console.log ('applying ' + keys[decorator]);
 			element.applyElementType(keys[decorator], elementTemplate[keys[decorator]]);
-		}
+		}*/
 	}
 };
 
@@ -331,8 +334,7 @@ Element.prototype.getRealEdges  = function()
 		
 	return this.realEdges
 };
-*/
-/*
+
 Element.prototype.getRealBox  = function()
 {
 	var element = this;
