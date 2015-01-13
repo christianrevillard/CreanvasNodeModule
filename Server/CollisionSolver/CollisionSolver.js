@@ -104,7 +104,7 @@ CollisionSolver.prototype.processNarrowPhase = function(collisionsToCheck, eleme
 				return;
 			if (!c.status)
 				return;
-			collisions.push({e1:e, e2:c.collisionWith, collisionPoints:c.collisionPoints});
+			collisions.push({e1:e, e2:c.collisionWith, collisionPoint:c.collisionPoint});
 		});
 		e.collisions = null;
 	});
@@ -132,7 +132,7 @@ CollisionSolver.prototype.checkForCollision = function(c, collisionsToCheck){
 	}
 
 	c.e1.collisions[c.e2.id].status = c.e2.collisions[c.e1.id].status = true;
-	c.e1.collisions[c.e2.id].collisionPoints = c.e2.collisions[c.e1.id].collisionPoints = collision.collisionPoints;
+	c.e1.collisions[c.e2.id].collisionPoint = c.e2.collisions[c.e1.id].collisionPoint = collision.collisionPoint;
 
 	this.moveOutOfOverlap(c.collisionHandler, c.e1, c.e2);
 
@@ -247,6 +247,7 @@ CollisionSolver.prototype.moveOutOfOverlapDifferentDt = function(collisionHandle
 	toUpdate.moving.updatePosition(okDt);
 };
 
+/*
 CollisionSolver.prototype.getCollisionPoint = function(edges)
 {		
 	var d,dmax = 0;
@@ -274,9 +275,9 @@ CollisionSolver.prototype.getCollisionPoint = function(edges)
 		x:(point1.x + point2.x)/2, 
 		y:(point1.y + point2.y)/2, 
 		vectors: vector.getUnitVectors(point1.x, point1.y,  point2.x , point2.y)};			
-};
+};*/
 
-CollisionSolver.prototype.getCollisionDetails = function (element, other, collisionPoints)
+CollisionSolver.prototype.getCollisionDetails = function (element, other, collisionPoint)
 {
 	if (element.solid.mass == Infinity && other.solid.mass == Infinity)
 	{
@@ -287,11 +288,12 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 		colVectors, speedElement, speedOther, localSpeedElement, localSpeedOther, centerCollisionElement,l1,
 		centerCollisionOther,l2;
 	
-	var collisionPoint = this.getCollisionPoint(collisionPoints);
+//	var collisionPoint = this.getCollisionPoint(collisionPoint);
 
 	//console.log("collisionPoint summary : " + collisionPoint.x + "," + collisionPoint.y);
 
-	colVectors = collisionPoint.vectors;
+	colVectors = element.getCollisionVectors(collisionPoint);
+		//collisionPoint.vectors;
 		
 	centerCollisionElement = new vector.Vector(collisionPoint.x-element.position.x, collisionPoint.y-element.position.y);								
 	l1 = vector.vectorProduct(centerCollisionElement, colVectors.v).z;		
@@ -391,8 +393,13 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 	
 	collisionList.forEach(function(c){
 		
-		c.collisionDetails = collisionSolver.getCollisionDetails(c.e1, c.e2, c.collisionPoints);
-			
+		c.collisionDetails = collisionSolver.getCollisionDetails(
+				c.e1, 
+				c.e2, 
+				// IN PROGRESS
+				c.collisionPoint);
+
+		// todo - not dy here !!!
 		if (Math.abs(c.collisionDetails.e1.dSpeedY)>0)
 		{
 			c.e1.moving.speed.x += c.collisionDetails.e1.dSpeedX;

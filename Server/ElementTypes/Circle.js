@@ -1,5 +1,6 @@
 console.log('Someone required a Circle here !');
 var serverElement = require('../ServerElement');
+var vector = require('../Vector');
 
 /**
  * All elementType must have a 'type' property
@@ -35,5 +36,13 @@ CircleElement.prototype.getBoundaryBox  = function()
 		bottom: this.position.y + this.radius
 	};
 };
+
+CircleElement.prototype.getCollisionVectors  = function(collisionPoint) {
+	return vector.getUnitVectorsByNormal(
+		this.position.x, 
+		this.position.y,  
+		collisionPoint.x, 
+		collisionPoint.y);
+};			
 
 exports.CircleElement = CircleElement;

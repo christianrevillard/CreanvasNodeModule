@@ -27,7 +27,7 @@ CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
 	if (otherRealBox.bottom < realBox.top)
 		return { collided: false};
 */
-	var collisionPoints = [];
+	var collisionPoint = null;
 
 	if (
 		Math.sqrt(
@@ -36,25 +36,21 @@ CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
 		<(element.radius + otherElement.radius))
 	{
 		// TODO - using same radius at the moment, ok for testing so far
-		var col = { x:(otherElement.position.x+element.position.x)/2,
-					y:(otherElement.position.y+element.position.y)/2};
-		collisionPoints.push({x:col.x-5, y:col.y});
-		collisionPoints.push({x:col.x+5, y:col.y});
+
+		return {
+			collided: true,
+			collisionPoint: { x:(otherElement.position.x+element.position.x)/2,
+					y:(otherElement.position.y+element.position.y)/2}
+		};
 	}
-		
-	if (collisionPoints.length < 2)
+	else
 	{
 		//console.log("No collision. Time: " + (new Date().getTime()-start));
 		return { collided: false};
-	}
-	
+	}	
 //	console.log("Collision. Total time find+update: " + (new Date().getTime()-start));
 	
 	// return directly correct point, with vectors and everything. TODO
-	return {
-		collided: true,
-		collisionPoints:collisionPoints
-	};
 };
 
 exports.CircleCircleCollision = CircleCircleCollision;
