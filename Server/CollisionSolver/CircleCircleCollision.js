@@ -7,40 +7,21 @@ var CircleCircleCollision = function() {
 
 CircleCircleCollision.prototype.getCollision = function(element, otherElement) {
 	
-	// expecting both to be circles, do we need to test it?	
-//	var start = new Date().getTime();
-	/*
-	 * nee to use new-old version
-	var realBox = element.getRealBox();
-	var otherRealBox = otherElement.getRealBox();
-	
-	// broad stuff 
-	if (realBox.right < otherRealBox.left)
-		return { collided: false};
-
-	if (otherRealBox.right < realBox.left)
-		return { collided: false};
-
-	if (realBox.bottom < otherRealBox.top)
-		return { collided: false};
-
-	if (otherRealBox.bottom < realBox.top)
-		return { collided: false};
-*/
 	var collisionPoint = null;
 
-	if (
-		Math.sqrt(
+	var distance = Math.sqrt(
 			(element.position.x-otherElement.position.x)*(element.position.x-otherElement.position.x)+
-			(element.position.y-otherElement.position.y)*(element.position.y-otherElement.position.y))
-		<(element.radius + otherElement.radius))
+			(element.position.y-otherElement.position.y)*(element.position.y-otherElement.position.y));
+	if (distance <(element.radius + otherElement.radius))
 	{
-		// TODO - using same radius at the moment, ok for testing so far
-
 		return {
 			collided: true,
-			collisionPoint: { x:(otherElement.position.x+element.position.x)/2,
-					y:(otherElement.position.y+element.position.y)/2}
+			collisionPoint: 
+				distance == 0 ? {x:element.x, y:element.y}:
+				{ 
+					x: element.position.x + element.radius/distance*(otherElement.position.x - element.position.x),
+					y: element.position.y + element.radius/distance*(otherElement.position.y - element.position.y)
+				}
 		};
 	}
 	else
