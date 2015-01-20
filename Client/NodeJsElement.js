@@ -29,6 +29,9 @@
 
 		var element = this;
 
+		if (!element.elementType)
+			return;
+
 		element.controller.context.translate(element.x, element.y);
 		element.controller.context.rotate(element.angle || 0);
 		element.controller.context.scale(element.scale.x || 1, element.scale.y || 1);
