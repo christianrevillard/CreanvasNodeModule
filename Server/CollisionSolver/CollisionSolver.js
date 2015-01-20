@@ -304,26 +304,16 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 	centerCollisionOther = new vector.Vector(collisionPoint.x-other.position.x, collisionPoint.y-other.position.y);								
 	l2= vector.vectorProduct(centerCollisionOther, colVectors.v).z;		
 	
-	var elementRot = vector.vectorProduct(
-			centerCollisionElement,
-			colVectors.v);	
+	var elementRot = new vector.Vector(0,0,element.moving.speed.angle);
+	var otherRot = new vector.Vector(0,0,other.moving.speed.angle);
 	
-	// TODO in Vectors, scalarxVector
-	elementRot.z = element.moving.speed.angle * elementRot.z;
-	
-	var otherRot = vector.vectorProduct(
-			centerCollisionOther,
-			colVectors.v);	
-
-	otherRot.z = other.moving.speed.angle * otherRot.z;
-
 	var elementLocalSpeedRot = vector.vectorProduct(
 		elementRot,
 		centerCollisionElement);
 
 	var otherLocalSpeedRot = vector.vectorProduct(
-			otherRot,
-			centerCollisionOther);
+		otherRot,
+		centerCollisionOther);
 	
 	speedElement = element.moving ? new vector.Vector(
 		element.moving.speed?(element.moving.speed.x + elementLocalSpeedRot.x):0, 

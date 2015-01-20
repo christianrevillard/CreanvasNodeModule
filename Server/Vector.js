@@ -13,7 +13,7 @@ var getUnitVectors = function(x1, y1, x2, y2)
 	return {
 		u:new Vector(dx/longueur, dy/longueur,0),
 		v:new Vector(-dy/longueur, dx/longueur,0),
-		w:new Vector(0,0,0)
+		w:new Vector(0,0,1)
 	};
 };
 
@@ -26,7 +26,7 @@ var getUnitVectorsByNormal = function(x1, y1, x2, y2)
 	return {
 		u:new Vector(dy/longueur, -dx/longueur,0),
 		v:new Vector(dx/longueur, dy/longueur,0),
-		w:new Vector(0,0,0)
+		w:new Vector(0,0,1)
 	};
 };
 
