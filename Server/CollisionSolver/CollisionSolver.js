@@ -157,13 +157,6 @@ CollisionSolver.prototype.checkForCollision = function(c, collisionsToCheck){
 CollisionSolver.prototype.moveOutOfOverlap = function(collisionHandler,e1, e2) {
 	var steps = 1;
 
-	// no justification - testing.
-	/*
-	e1.moving = e1.moving.updateMove(0);
-	e2.moving = e2.moving.updateMove(0);
-	
-	return;
-*/
 	// Input: e1 and e2 overlap in their currentDt
 	// Out: update currentDt and moving into an non-overlaping position. dt goes always down
 	// See later, drop for the moment - CollisionMatrix to contain the most actual collisionInfo => needed really?
@@ -282,98 +275,78 @@ CollisionSolver.prototype.getCollisionPoint = function(edges)
 		vectors: vector.getUnitVectors(point1.x, point1.y,  point2.x , point2.y)};			
 };*/
 
-CollisionSolver.prototype.getCollisionDetails = function (element, other, collisionHandler)//, collisionPoint)
-{
+var getCollisionInformation = function(collisionBasis, collisionPoint, element){
+
+	var centerToCollision = new vector.Vector(collisionPoint.x-element.position.x, collisionPoint.y-element.position.y);								
+
+	var rotation = new vector.Vector(0, 0, element.moving.speed.angle);
+	
+	var localSpeed = vector.Vector.sum(
+			element.moving.speed,
+			vector.Vector.vectorProduct(
+				rotation,
+				centerToCollision));
+			
+	if (element.moving.scaleSpeed)
+	{
+		localSpeed.x += centerToCollision.x*element.moving.scaleSpeed.x;
+		localSpeed.y += centerToCollision.y*element.moving.scaleSpeed.y;
+	};
+		
+	var localSpeedInCollisionBasis = localSpeed.getCoordinates(collisionBasis);	
+		
+	var moi = element.fixed ? Infinity: (element.getMomentOfInertia ? element.getMomentOfInertia(): element.solid.getMomentOfInertia());
+
+	var rotationEffect = vector.Vector.vectorProduct(
+			centerToCollision,
+			collisionBasis.v1).z / moi;
+	
+	return {
+		localSpeed: localSpeedInCollisionBasis,
+		mass: element.fixedPoint ? Infinity:element.solid.mass,
+		momentOfInertia: moi,
+		rotationContributionToImpulse: vector.Vector.scalarProduct(
+				vector.Vector.vectorProduct(
+						new vector.Vector(0,0,rotationEffect),
+						centerToCollision),
+					collisionBasis.v1),
+		rotationEffect: rotationEffect
+	};
+};
+
+CollisionSolver.prototype.getCollisionDetails = function (element, other, collisionHandler) {
+
 	if (element.solid.mass == Infinity && other.solid.mass == Infinity)
 	{
 		return;
 	}
 
-	var 
-		colVectors, speedElement, speedOther, localSpeedElement, localSpeedOther, centerCollisionElement,l1,
-		centerCollisionOther,l2;
-
 	var collisionGeometry = collisionHandler.getCollisionPoint(element, other);
 
-	colVectors = vector.getUnitVectorsByNormal(0,0,collisionGeometry.normalVector.x, collisionGeometry.normalVector.y);
+	var collisionBasis = vector.Vector.getBasisFromFirstVector(collisionGeometry.normalVector);
 	var collisionPoint = collisionGeometry.collisionPoint;
 	
-	centerCollisionElement = new vector.Vector(collisionPoint.x-element.position.x, collisionPoint.y-element.position.y);								
-	l1 = vector.vectorProduct(centerCollisionElement, colVectors.v).z;		
-
-	centerCollisionOther = new vector.Vector(collisionPoint.x-other.position.x, collisionPoint.y-other.position.y);								
-	l2= vector.vectorProduct(centerCollisionOther, colVectors.v).z;		
+	var elementCollisionInformation = getCollisionInformation(collisionBasis, collisionPoint, element);
+	var otherCollisionInformation = getCollisionInformation(collisionBasis, collisionPoint, other);
 	
-	var elementRot = new vector.Vector(0,0,element.moving.speed.angle);
-	var otherRot = new vector.Vector(0,0,other.moving.speed.angle);
-	
-	var elementLocalSpeedRot = vector.vectorProduct(
-		elementRot,
-		centerCollisionElement);
-
-	var otherLocalSpeedRot = vector.vectorProduct(
-		otherRot,
-		centerCollisionOther);
-	
-	speedElement = element.moving ? new vector.Vector(
-		element.moving.speed?(element.moving.speed.x + elementLocalSpeedRot.x):0, 
-		element.moving.speed?(element.moving.speed.y + elementLocalSpeedRot.y):0)
-	: new vector.Vector(0,0);
-	
-	speedOther = other.moving ? new vector.Vector(
-		other.moving.speed?(other.moving.speed.x + otherLocalSpeedRot.x):0, 
-		other.moving.speed?(other.moving.speed.y + otherLocalSpeedRot.x):0):
-			new vector.Vector(0,0);
-
-	if (element.moving && element.moving.scaleSpeed)
-	{
-		speedElement.x += centerCollisionElement.x*element.moving.scaleSpeed.x;
-		speedElement.y += centerCollisionElement.y*element.moving.scaleSpeed.y;
-	};
-
-	if (other.moving && other.moving.scaleSpeed)
-	{
-		speedOther.x += centerCollisionOther.x*other.moving.scaleSpeed.x;
-		speedOther.y += centerCollisionOther.y*other.moving.scaleSpeed.y;
-	};
-
-	localSpeedElement = speedElement.getCoordinates(colVectors);
-	localSpeedOther = speedOther.getCoordinates(colVectors);
-
-var elementMass = element.fixedPoint ? Infinity:element.solid.mass;
-	var otherMass = other.fixedPoint ? Infinity:other.solid.mass;
-	// not beautiful...
-	var elementMOI = element.fixed ? Infinity: (element.getMomentOfInertia ? element.getMomentOfInertia(): element.solid.getMomentOfInertia());
-	var otherMOI = other.fixed ? Infinity: (other.getMomentOfInertia ? other.getMomentOfInertia(): other.solid.getMomentOfInertia());
-
-	var elementStuff = 
-		vector.scalarProduct(
-			vector.vectorProduct(
-				elementRot,
-				centerCollisionElement),
-			colVectors.v)/elementMOI;
-
-	var otherStuff = 
-		vector.scalarProduct(
-			vector.vectorProduct(
-				otherRot,
-				centerCollisionOther),
-			colVectors.v)/otherMOI;
-
 	var impulse = 
 		-( 1 + element.solid.collisionCoefficient * other.solid.collisionCoefficient)
-		* (localSpeedOther.v - localSpeedElement.v)
-		/( 1/elementMass + 1/otherMass + elementStuff + otherStuff);
+		* (otherCollisionInformation.localSpeed.x - elementCollisionInformation.localSpeed.x)
+		/(
+			1/elementCollisionInformation.mass + 
+			1/otherCollisionInformation.mass + 
+			elementCollisionInformation.rotationContributionToImpulse + 
+			otherCollisionInformation.rotationContributionToImpulse);
 
 	var updates = {
 		e1:{
-			dSpeedX: -impulse/elementMass*colVectors.v.x,
-			dSpeedY: -impulse/elementMass*colVectors.v.y,
-			dSpeedAngle: - impulse * elementRot.z / elementMOI},
+			dSpeedX: -impulse/elementCollisionInformation.mass*collisionBasis.v1.x,
+			dSpeedY: -impulse/elementCollisionInformation.mass*collisionBasis.v1.y,
+			dSpeedAngle: - impulse * elementCollisionInformation.rotationEffect},
 		e2:{
-			dSpeedX: impulse/otherMass*colVectors.v.x,
-			dSpeedY: impulse/otherMass*colVectors.v.y,
-			dSpeedAngle: impulse * otherRot.z / otherMOI}
+			dSpeedX: impulse/otherCollisionInformation.mass*collisionBasis.v1.x,
+			dSpeedY: impulse/otherCollisionInformation.mass*collisionBasis.v1.y,
+			dSpeedAngle: - impulse * otherCollisionInformation.rotationEffect}
 	};
 		
 	return updates;

@@ -63,7 +63,7 @@ AxeAlignedBoxCircleCollision.prototype.getCollisionPoint = function(element, oth
 	var box = element.axeAlignedBox ? element : otherElement;
 	
 	var collision = null;//collisionPoint, normalVector;
-
+	
 	if (
 		circle.position.x < box.boundaryBox.left && 
 		circle.position.y < box.boundaryBox.top)
