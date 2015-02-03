@@ -297,20 +297,25 @@ var getCollisionInformation = function(collisionBasis, collisionPoint, element){
 		
 	var moi = element.fixed ? Infinity: (element.getMomentOfInertia ? element.getMomentOfInertia(): element.solid.getMomentOfInertia());
 
-	var rotationEffect = vector.Vector.vectorProduct(
+	var N = vector.Vector.vectorProduct(		
+		vector.Vector.vectorProduct(
 			centerToCollision,
-			collisionBasis.v1).z / moi;
+			collisionBasis.v1),
+		centerToCollision);
+
+	var T = vector.Vector.vectorProduct(		
+			vector.Vector.vectorProduct(
+				centerToCollision,
+				collisionBasis.v2),
+			centerToCollision);
 	
 	return {
 		localSpeed: localSpeedInCollisionBasis,
+		centerToCollision:centerToCollision,
 		mass: element.fixedPoint ? Infinity:element.solid.mass,
 		momentOfInertia: moi,
-		rotationContributionToImpulse: vector.Vector.scalarProduct(
-				vector.Vector.vectorProduct(
-						new vector.Vector(0,0,rotationEffect),
-						centerToCollision),
-					collisionBasis.v1),
-		rotationEffect: rotationEffect
+		N:N.getCoordinates(collisionBasis),
+		T:T.getCoordinates(collisionBasis)
 	};
 };
 
@@ -326,28 +331,73 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 	var collisionBasis = vector.Vector.getBasisFromFirstVector(collisionGeometry.normalVector);
 	var collisionPoint = collisionGeometry.collisionPoint;
 	
-	var elementCollisionInformation = getCollisionInformation(collisionBasis, collisionPoint, element);
-	var otherCollisionInformation = getCollisionInformation(collisionBasis, collisionPoint, other);
-	
-	var impulse = 
-		-( 1 + element.solid.collisionCoefficient * other.solid.collisionCoefficient)
-		* (otherCollisionInformation.localSpeed.x - elementCollisionInformation.localSpeed.x)
-		/(
-			1/elementCollisionInformation.mass + 
-			1/otherCollisionInformation.mass + 
-			elementCollisionInformation.rotationContributionToImpulse + 
-			otherCollisionInformation.rotationContributionToImpulse);
+	var e1 = getCollisionInformation(collisionBasis, collisionPoint, element);
+	var e2 = getCollisionInformation(collisionBasis, collisionPoint, other);
 
+/*	console.log('localSpeedInCollisionBasis: ' + e1.localSpeed.x + ', ' + e1.localSpeed.y);
+	console.log('centerToCollision: ' + e1.centerToCollision.x + ', ' + e1.centerToCollision.y);
+	console.log('N: ' + e1.N.x + ', ' + e1.N.y);
+	console.log('T: ' + e1.T.x + ', ' + e1.T.y);
+	console.log('m/moi: ' + e1.mass + ', ' + e1.momentOfInertia);
+
+	console.log('localSpeedInCollisionBasis: ' + e2.localSpeed.x + ', ' + e2.localSpeed.y);
+	console.log('centerToCollision: ' + e2.centerToCollision.x + ', ' + e2.centerToCollision.y);
+	console.log('N: ' + e2.N.x + ', ' + e2.N.y);
+	console.log('T: ' + e2.T.x + ', ' + e2.T.y);
+	console.log('m/moi: ' + e2.mass + ', ' + e2.momentOfInertia);
+*/
+	console.log();
+
+	var impulseNormal = 
+		-( 1 + element.solid.collisionCoefficient * other.solid.collisionCoefficient)
+		* (e2.localSpeed.x - e1.localSpeed.x)
+		/(1/e1.mass + 1/e2.mass + e1.N.x/e1.momentOfInertia + e2.N.x/e2.momentOfInertia);
+
+	var impulseFriction = 
+		- (e2.localSpeed.y - e1.localSpeed.y + impulseNormal * (e1.N.y/e1.momentOfInertia + e2.N.y/e2.momentOfInertia))
+		/(1/e1.mass + 1/e2.mass + e1.T.y/e1.momentOfInertia + e2.T.y/e2.momentOfInertia);
+
+	console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
+	
+	var muS = 0.6; // static
+	var muD = 0.3; // dynamic
+	
+	if (Math.abs(impulseFriction/impulseNormal)>muS){
+		console.log('go dynamic !');
+		impulseFriction = muD*impulseNormal;
+		console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
+	}
+	
+	var impulse = new vector.Vector(
+		impulseNormal * collisionBasis.v1.x + impulseFriction * collisionBasis.v2.x,
+		impulseNormal * collisionBasis.v1.y + impulseFriction * collisionBasis.v2.y,
+		0);
+	
 	var updates = {
 		e1:{
-			dSpeedX: -impulse/elementCollisionInformation.mass*collisionBasis.v1.x,
-			dSpeedY: -impulse/elementCollisionInformation.mass*collisionBasis.v1.y,
-			dSpeedAngle: - impulse * elementCollisionInformation.rotationEffect},
+			dSpeedX: 
+				-impulse.x/e1.mass,
+			dSpeedY: 
+				-impulse.y/e1.mass,
+			dSpeedAngle: 
+				- vector.Vector.vectorProduct(
+					e1.centerToCollision,
+					impulse).z/e1.momentOfInertia
+			},
 		e2:{
-			dSpeedX: impulse/otherCollisionInformation.mass*collisionBasis.v1.x,
-			dSpeedY: impulse/otherCollisionInformation.mass*collisionBasis.v1.y,
-			dSpeedAngle: - impulse * otherCollisionInformation.rotationEffect}
+			dSpeedX: 
+				impulse.x/e2.mass,
+			dSpeedY: 
+				impulse.y/e2.mass,
+			dSpeedAngle: 
+				vector.Vector.vectorProduct(
+					e2.centerToCollision,
+					impulse).z/e2.momentOfInertia
+				}
 	};
+	
+	console.log('change: ' + element.id + ': ' + updates.e1.dSpeedX + ', ' + updates.e1.dSpeedY + ', ' + updates.e1.dSpeedAngle + ', ');
+	console.log('change: ' + other.id + ': ' + updates.e2.dSpeedX + ', ' + updates.e2.dSpeedY + ', ' + updates.e2.dSpeedAngle + ', ');
 		
 	return updates;
 };
@@ -380,28 +430,13 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 				c.e2,
 				c.collisionHandler);
 
-	/*console.log(
-			'collsion: x:' + c.collisionPoint.x 
-			+ ', y:' +c.collisionPoint.y); 
+		console.log(
+			'before vx:' +c.e1.moving.speed.x
+			+ ', vy:' +c.e1.moving.speed.y);
 
 		console.log(
-			'e1: x:' +c.e1.position.x 
-			+ ', y:' +c.e1.position.y 
-			+ ', vx:' +c.e1.moving.speed.x
-			+ ', vy:' +c.e1.moving.speed.y
-			+ ', dvx:' +c.collisionDetails.e1.dSpeedX
-			+ ', dvy:' +c.collisionDetails.e1.dSpeedY
-			+ ', dOmega:'+ c.collisionDetails.e1.dSpeedAngle);
-
-		console.log(
-				'e2: x:' +c.e2.position.x 
-				+ ', y:' +c.e2.position.y 
-				+ ', vx:' +c.e2.moving.speed.x
-				+ ', vy:' +c.e2.moving.speed.y
-				+ ', dvx:'+ c.collisionDetails.e2.dSpeedX
-				+ ', dvy:'+ c.collisionDetails.e2.dSpeedY
-				+ ', dOmega:' +c.collisionDetails.e2.dSpeedAngle);
-	*/
+				'before vx:' +c.e2.moving.speed.x
+				+ ', vy:' +c.e2.moving.speed.y);
 
 		c.e1.moving.speed.x += c.collisionDetails.e1.dSpeedX;
 		c.e1.moving.speed.y += c.collisionDetails.e1.dSpeedY;
@@ -410,7 +445,15 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 		c.e2.moving.speed.x += c.collisionDetails.e2.dSpeedX;
 		c.e2.moving.speed.y += c.collisionDetails.e2.dSpeedY;
 		c.e2.moving.speed.angle += c.collisionDetails.e2.dSpeedAngle;
-	});
+
+		console.log(
+				'after vx:' + c.e1.moving.speed.x
+				+ ', vy:' + c.e1.moving.speed.y);
+
+			console.log(
+					'after vx:' +c.e2.moving.speed.x
+					+ ', vy:' +c.e2.moving.speed.y);
+});
 };	
 
 exports.CollisionSolver = CollisionSolver;
