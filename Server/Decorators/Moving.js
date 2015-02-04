@@ -80,8 +80,10 @@ MovingElement.prototype.commitMove = function()
 
 MovingElement.prototype.updatePosition = function(dt) {	
 
+	var useAcceleration = 1;
 	if (this.originalPosition){
 		this.wasAdjusted = true;
+		useAcceleration = 0;
 	}
 	
 	if (this.speed.x==0 && this.speed.y==0 && this.speed.angle==0 && this.acceleration.x==0 && this.acceleration.y==0 && this.acceleration.angle==0) // tood add scale
@@ -101,9 +103,12 @@ MovingElement.prototype.updatePosition = function(dt) {
 	this.dt = dt;
 
 	this.parent.position = {
-		x: this.originalPosition.x + (this.speed.x  + this.acceleration.x * dt/1.5) * dt,
-		y: this.originalPosition.y + (this.speed.y + this.acceleration.y * dt/1.5) * dt,
-		angle: this.originalPosition.angle + (this.speed.angle + this.acceleration.angle * dt/1.5) * dt
+		x: this.originalPosition.x + (this.speed.x  + useAcceleration*this.acceleration.x * dt/2) * dt,
+		y: this.originalPosition.y + (this.speed.y + useAcceleration*this.acceleration.y * dt/2) * dt,
+		angle: this.originalPosition.angle + (this.speed.angle + useAcceleration*this.acceleration.angle * dt/2) * dt
+//		x: this.originalPosition.x + this.speed.x * dt,
+//		y: this.originalPosition.y + this.speed.y * dt,
+//		angle: this.originalPosition.angle + this.speed.angle * dt
 	};
 
 	this.parent.scale = {

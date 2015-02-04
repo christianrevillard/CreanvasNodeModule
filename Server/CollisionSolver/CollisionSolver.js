@@ -346,7 +346,7 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 	console.log('T: ' + e2.T.x + ', ' + e2.T.y);
 	console.log('m/moi: ' + e2.mass + ', ' + e2.momentOfInertia);
 */
-	console.log();
+//	console.log();
 
 	var impulseNormal = 
 		-( 1 + element.solid.collisionCoefficient * other.solid.collisionCoefficient)
@@ -357,15 +357,15 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 		- (e2.localSpeed.y - e1.localSpeed.y + impulseNormal * (e1.N.y/e1.momentOfInertia + e2.N.y/e2.momentOfInertia))
 		/(1/e1.mass + 1/e2.mass + e1.T.y/e1.momentOfInertia + e2.T.y/e2.momentOfInertia);
 
-	console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
+//	console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
 	
 	var muS = 0.6; // static
 	var muD = 0.3; // dynamic
 	
 	if (Math.abs(impulseFriction/impulseNormal)>muS){
-		console.log('go dynamic !');
+		//console.log('go dynamic !');
 		impulseFriction = muD*impulseNormal;
-		console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
+	//	console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
 	}
 	
 	var impulse = new vector.Vector(
@@ -396,8 +396,8 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 				}
 	};
 	
-	console.log('change: ' + element.id + ': ' + updates.e1.dSpeedX + ', ' + updates.e1.dSpeedY + ', ' + updates.e1.dSpeedAngle + ', ');
-	console.log('change: ' + other.id + ': ' + updates.e2.dSpeedX + ', ' + updates.e2.dSpeedY + ', ' + updates.e2.dSpeedAngle + ', ');
+//	console.log('change: ' + element.id + ': ' + updates.e1.dSpeedX + ', ' + updates.e1.dSpeedY + ', ' + updates.e1.dSpeedAngle + ', ');
+//	console.log('change: ' + other.id + ': ' + updates.e2.dSpeedX + ', ' + updates.e2.dSpeedY + ', ' + updates.e2.dSpeedAngle + ', ');
 		
 	return updates;
 };
@@ -430,14 +430,14 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 				c.e2,
 				c.collisionHandler);
 
-		console.log(
+		/*console.log(
 			'before vx:' +c.e1.moving.speed.x
 			+ ', vy:' +c.e1.moving.speed.y);
 
 		console.log(
 				'before vx:' +c.e2.moving.speed.x
 				+ ', vy:' +c.e2.moving.speed.y);
-
+*/
 		c.e1.moving.speed.x += c.collisionDetails.e1.dSpeedX;
 		c.e1.moving.speed.y += c.collisionDetails.e1.dSpeedY;
 		c.e1.moving.speed.angle += c.collisionDetails.e1.dSpeedAngle;
@@ -445,14 +445,14 @@ CollisionSolver.prototype.updateSpeeds = function(collisionList){
 		c.e2.moving.speed.x += c.collisionDetails.e2.dSpeedX;
 		c.e2.moving.speed.y += c.collisionDetails.e2.dSpeedY;
 		c.e2.moving.speed.angle += c.collisionDetails.e2.dSpeedAngle;
-
+/*
 		console.log(
 				'after vx:' + c.e1.moving.speed.x
 				+ ', vy:' + c.e1.moving.speed.y);
 
 			console.log(
 					'after vx:' +c.e2.moving.speed.x
-					+ ', vy:' +c.e2.moving.speed.y);
+					+ ', vy:' +c.e2.moving.speed.y);*/
 });
 };	
 
