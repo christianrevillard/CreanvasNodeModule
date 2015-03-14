@@ -135,10 +135,12 @@ MovingElement.prototype.updatePosition = function(dt) {
 	{
 		this.parent.position.y = this.movingLimits.yMin; 
 	}
-
+	
 	this.parent.boundaryBox = this.parent.getBoundaryBox();
+	this.originalBoundaryBox = this.originalBoundaryBox || this.parent.boundaryBox;	
 
 	// only needed with max dt!
+
 	this.bigBoundaryBox = {
 		left: Math.min(this.parent.boundaryBox.left, this.originalBoundaryBox.left),
 		top: Math.min(this.parent.boundaryBox.top, this.originalBoundaryBox.top),

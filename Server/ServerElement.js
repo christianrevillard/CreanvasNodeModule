@@ -23,7 +23,7 @@ Element.prototype.initialize = function(controller, elementTemplate) {
 	for (var decorator in keys) {
 		//console.log ('checking ' + keys[decorator]);
 		if (decorators[keys[decorator]]) {			
-			//console.log ('applying ' + keys[decorator]);
+			console.log ('applying ' + keys[decorator]);
 			element.applyElementDecorator(keys[decorator], elementTemplate[keys[decorator]]);
 		}
 		// make this to a more basic stuff, or is this ok??
@@ -144,7 +144,12 @@ Element.prototype.removeEventListener = function(id) {
 
 Element.prototype.isPointInElementEdges = function(x, y) {
 
+	
 	var local = this.getElementXYFromRealXY({x:x, y:y});
+
+	if (!this.solid){
+		return Math.abs(local.x)<100 && Math.abs(local.y)<100;
+	};
 	
 	if(!this.solid.isInside)
 		return false;
@@ -290,6 +295,13 @@ Element.prototype.getBoundaryBox  = function()
 {
 	if (this.elementType)
 		return this.elementType.getBoundaryBox();
+	else
+		return {
+		left: this.position.x,
+		right: this.position.x,
+		top: this.position.y,
+		bottom: this.position.y
+	};
 };
 
 /*

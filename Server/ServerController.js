@@ -138,10 +138,14 @@ Controller.prototype.processNextFrame = function() {
 	
 	// for solid. for other, just move.
 	this.updatePositions(dt);
-	var collisions = this.collisionSolver.solveCollisions(this.elements.filter(function(e){ return e.solid;})); 	
-	this.commitMoves();	
-	this.collisionSolver.updateSpeeds(collisions);
-
+	if (!this.collisionSolver){
+		this.commitMoves();	
+	}
+	else {
+		var collisions = this.collisionSolver.solveCollisions(this.elements.filter(function(e){ return e.solid;})); 	
+		this.commitMoves();	
+		this.collisionSolver.updateSpeeds(collisions);
+	}
 	this.updateClient();
 		
 	if ((new Date()).getTime() - start >40)
