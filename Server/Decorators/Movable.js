@@ -8,7 +8,7 @@ var MovableElement = function(parent, movableData) {
 };
 
 MovableElement.prototype.startMoving = function () {
-	console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.x +',' + this.parent.y +') ');
+	console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.position.x +',' + this.parent.position.y +') ');
 	this.isMoving = true;
 	this.originalZ = this.parent.position.z;
 	this.parent.position.z = this.parent.position.z + 100;	
@@ -69,6 +69,7 @@ MovableElement.prototype.onPointerMove = function(eventData) {
 
 	this.parent.moving.targetElementX = eventData.x;  
 	this.parent.moving.targetElementY = eventData.y;
+//	console.log("Target updated " + this.parent.moving.targetElementX + "," + this.parent.moving.targetElementY);
 
 	return false;
 };

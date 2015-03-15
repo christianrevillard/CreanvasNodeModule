@@ -53,7 +53,7 @@ MovingElement.prototype.commitMove = function()
 	if(!this.dt)
 		return;
 		
-//	console.log('Commiting move for dt = ' + this.dt);
+//	console.log('Commiting move for dt = ' + this.dt + ' at ' + this.parent.position.x + ',' + this.parent.position.y);
 
 	if (!this.wasAdjusted){
 		this.speed.x += this.acceleration.x * this.dt;
@@ -68,8 +68,8 @@ MovingElement.prototype.commitMove = function()
 	this.originalBoundaryBox = null;
 	this.wasAdjusted = false;
 	
-	this.dt = null;
-	
+	this.dt = null;	
+	this.maxDt = null;
 	/*var ec = this.parent.solid.mass * this.speed.y * this.speed.y / 2;
 	var ep = this.parent.solid.mass * 100 * (500-this.parent.position.y);
 	console.log ("E: " + Math.round(ec + ep) + " (ec: " + Math.round(ec) + ", ep: " + Math.round(ep) + ") - y: " + Math.round(this.parent.position.y) + 
@@ -86,7 +86,7 @@ MovingElement.prototype.updatePosition = function(dt) {
 		useAcceleration = 0;
 	}
 	
-	if (this.speed.x==0 && this.speed.y==0 && this.speed.angle==0 && this.acceleration.x==0 && this.acceleration.y==0 && this.acceleration.angle==0) // tood add scale
+	if (this.targetElementX == undefined && this.speed.x==0 && this.speed.y==0 && this.speed.angle==0 && this.acceleration.x==0 && this.acceleration.y==0 && this.acceleration.angle==0) // tood add scale
 	{
 		this.dt=0;
 
@@ -102,15 +102,24 @@ MovingElement.prototype.updatePosition = function(dt) {
 	
 	this.dt = dt;
 
-	this.parent.position = {
-		x: this.originalPosition.x + (this.speed.x  + useAcceleration*this.acceleration.x * dt/2) * dt,
-		y: this.originalPosition.y + (this.speed.y + useAcceleration*this.acceleration.y * dt/2) * dt,
-		angle: this.originalPosition.angle + (this.speed.angle + useAcceleration*this.acceleration.angle * dt/2) * dt
-//		x: this.originalPosition.x + this.speed.x * dt,
-//		y: this.originalPosition.y + this.speed.y * dt,
-//		angle: this.originalPosition.angle + this.speed.angle * dt
-	};
-
+	this.maxDt  = this.maxDt || dt;
+	
+	if (this.targetElementX !== undefined)
+	{
+	//	console.log("Moving to target " + this.targetElementX + "," + this.targetElementY + " (" + dt + ")" );
+		this.parent.position = {
+				x: this.originalPosition.x + dt/this.maxDt*(this.targetElementX- this.originalPosition.x),
+				y: this.originalPosition.y + dt/this.maxDt*(this.targetElementY- this.originalPosition.y),
+				angle: this.originalPosition.angle
+		};
+	}	
+	else {
+		this.parent.position = {
+			x: this.originalPosition.x + (this.speed.x  + useAcceleration*this.acceleration.x * dt/2) * dt,
+			y: this.originalPosition.y + (this.speed.y + useAcceleration*this.acceleration.y * dt/2) * dt,
+			angle: this.originalPosition.angle + (this.speed.angle + useAcceleration*this.acceleration.angle * dt/2) * dt
+		};
+	}
 	this.parent.scale = {
 		x: this.originalScale.x + (this.scaleSpeed?this.scaleSpeed.x * dt : 0),
 		y: this.originalScale.y + (this.scaleSpeed?this.scaleSpeed.y * dt : 0) 
@@ -148,18 +157,18 @@ MovingElement.prototype.updatePosition = function(dt) {
 		bottom: Math.max(this.parent.boundaryBox.bottom, this.originalBoundaryBox.bottom)
 	};
 			
-	/*
-	if (moving.targetElementX !== undefined)
+	if (this.targetElementX !== undefined)
 	{
+		//console.log("Target hit " + this.targetElementX + "," + this.targetElementY + " (" + dt + ")" );
  		if ( 
-		(moving.targetElementX-moving.parent.position.x)*(moving.targetElementX-moving.parent.position.x)<1
-		&& (moving.targetElementY-moving.parent.position.y)*(moving.targetElementY-moving.parent.position.y) <1)
+		(this.targetElementX-this.parent.position.x)*(this.targetElementX-this.parent.position.x)<1
+		&& (this.targetElementY-this.parent.position.y)*(this.targetElementY-this.parent.position.y) <1)
 		{
-			moving.targetElementX = moving.targetElementY = undefined;
-			moving.speed = moving.originalSpeed || { x:0, y:0, angle:0};
+ 			this.targetElementX = this.targetElementY = undefined;
+ 			this.speed = this.originalSpeed || { x:0, y:0, angle:0};
 		}
 	}
-*/
+
 	//moving.parent.previousTiles = moving.parent.broadTiles;
 	
 };
