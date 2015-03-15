@@ -23,12 +23,12 @@ DropZone.prototype.drop = function(eventData) {
 	
 	dropped.droppable.dropZone = this.parent;
 	
-	console.log('Dropping ' + dropped.id  + ' at (' + dropped.x +',' + dropped.y +')');
+	console.log('Dropping ' + dropped.id  + ' at (' + dropped.position.x +',' + dropped.position.y +')');
 	
 	if (this.dropX) dropped.position.x = this.dropX;
 	if (this.dropY) dropped.position.y = this.dropY;
 	
-	console.log('Adjusting ' + dropped.id + ' to (' + dropped.x + ',' + dropped.y + ')');
+	console.log('Adjusted ' + dropped.id + ' to (' + dropped.position.x + ',' + dropped.position.y + ')');
 
 	if (dropped.droppable.onDrop)
 		dropped.droppable.onDrop(this.parent, dropped);
