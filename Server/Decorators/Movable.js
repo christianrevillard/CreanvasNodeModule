@@ -42,7 +42,7 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 	}
 	
 	if (this.parent.droppable && this.parent.droppable.dropZone) {
-		this.parent.droppable.dropZone.drag(this.parent);
+		this.parent.droppable.dropZone.dropZone.drag(this.parent);
 	}
 	
 	this.parent.touchIdentifier = eventData.touchIdentifier;

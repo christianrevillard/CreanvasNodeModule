@@ -23,7 +23,7 @@ Element.prototype.initialize = function(controller, elementTemplate) {
 	for (var decorator in keys) {
 		//console.log ('checking ' + keys[decorator]);
 		if (decorators[keys[decorator]]) {			
-			console.log ('applying ' + keys[decorator]);
+//			console.log ('applying ' + keys[decorator]);
 			element.applyElementDecorator(keys[decorator], elementTemplate[keys[decorator]]);
 		}
 		// make this to a more basic stuff, or is this ok??

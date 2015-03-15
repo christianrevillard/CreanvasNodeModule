@@ -45,7 +45,7 @@ DropZone.prototype.drag = function(dropped)
 var applyTo = function(element, dropzoneData)
 {
 	element.dropZone = new DropZone(element, dropzoneData);
-	
+		
 	element.addEventListener(
 		'pointerUp',
 		function(eventData) { return element.dropZone.drop(eventData); });	
