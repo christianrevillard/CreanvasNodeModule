@@ -359,8 +359,8 @@ CollisionSolver.prototype.getCollisionDetails = function (element, other, collis
 
 //	console.log(element.id + ',' + other.id + ' : N:' + impulseNormal + ' F:' + impulseFriction);
 	
-	var muS = 0.6; // static
-	var muD = 0.3; // dynamic
+	var muS = 0.7; // static
+	var muD = 0.5; // dynamic
 	
 	if (Math.abs(impulseFriction/impulseNormal)>muS){
 		//console.log('go dynamic !');
