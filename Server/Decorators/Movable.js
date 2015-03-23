@@ -15,6 +15,7 @@ MovableElement.prototype.startMoving = function () {
 };
 
 MovableElement.prototype.stopMoving = function(eventData) {
+	console.log('Stop moving');	
 	if (this.alwaysMoving)
 		return;
 	
@@ -30,6 +31,8 @@ MovableElement.prototype.stopMoving = function(eventData) {
 };
 
 MovableElement.prototype.onPointerDown = function(eventData) {
+	console.log('Pointer down');	
+
 	if (this.isBlocked && this.isBlocked(this.parent, eventData.originSocketId)) 
 		return;
 
@@ -51,6 +54,8 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 };
 
 MovableElement.prototype.onPointerMove = function(eventData) {
+	console.log('Pointer move');	
+
 	if (this.isBlocked && this.isBlocked(this.parent, eventData.originSocketId)) 
 		return;
 
@@ -78,21 +83,25 @@ var applyTo = function(element, movableData) {
 	if (!element.moving)
 		moving.applyTo(element, {});
 
+//	console.log('Applying movable');	
 	element.movable = new MovableElement(element, movableData);
 	
 	var controller = element.controller;
 	
 	element.addEventListener(
 		'pointerDown',
-		function(eventData) { return element.movable.onPointerDown(eventData); });
+		function(eventData) {
+			return element.movable.onPointerDown(eventData); });
 
 	element.addEventListener(
 		'pointerMove', 
-		function(eventData) { return element.movable.onPointerMove(eventData); });
+		function(eventData) {
+			return element.movable.onPointerMove(eventData); });
 	
 	element.addEventListener(
 		'pointerUp', 
-		function(eventData) { return element.movable.stopMoving(eventData); });
+		function(eventData) { 
+			return element.movable.stopMoving(eventData); });
 };
 
 exports.applyTo = applyTo;

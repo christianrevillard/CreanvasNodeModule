@@ -143,7 +143,6 @@ Element.prototype.removeEventListener = function(id) {
 };
 
 Element.prototype.isPointInElementEdges = function(x, y) {
-
 	
 	var local = this.getElementXYFromRealXY({x:x, y:y});
 

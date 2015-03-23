@@ -227,6 +227,8 @@ Controller.prototype.addSocket = function(socket) {
 
 	socket.on('pointerEvent', function(message) {
 
+		//console.log('pointerEvent ' + message);
+		
 		var eventData = JSON.parse(message);
 		var bubble = true;
 
@@ -244,7 +246,7 @@ Controller.prototype.addSocket = function(socket) {
 		});
 
 		hits.forEach(function(hit) {
-
+			console.log('pointerEvent ' + message + ' applying to ' + hit.id);
 			if (!bubble)
 				return;
 

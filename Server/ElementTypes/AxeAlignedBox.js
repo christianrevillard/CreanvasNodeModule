@@ -38,4 +38,12 @@ AxeAlignedBox.prototype.getMomentOfInertia = function()
 	return Infinity;
 };
 
+AxeAlignedBox.prototype.isPointInElementEdges = function(x, y) {
+	//console.log('checking for (' + x + ',' + y + ')' + this.id);
+	var local = this.getElementXYFromRealXY({x:x, y:y});
+	//console.log('checking for (' + local.x + ',' + local.y + ')' + this.id);
+	
+	return local.x>this.left && local.x<this.right && local.y>this.top && local.y<this.bottom;
+};
+
 exports.AxeAlignedBox = AxeAlignedBox;
