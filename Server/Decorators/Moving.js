@@ -37,6 +37,10 @@ var MovingElement = function(parent, elementMoving)
 
 	moving.movingLimits = {
 		vMax: elementMoving.movingLimits.vMax === 0 ? 0 : elementMoving.movingLimits.vMax || Infinity,
+		vxMax: elementMoving.movingLimits.vxMax === 0 ? 0 : elementMoving.movingLimits.vxMax || Infinity,
+		vyMax: elementMoving.movingLimits.vyMax === 0 ? 0 : elementMoving.movingLimits.vyMax || Infinity,
+		vxMin: elementMoving.movingLimits.vxMin || 0,
+		vyMin: elementMoving.movingLimits.vyMin || 0,
 		xMin: elementMoving.movingLimits.xMin === 0 ? 0 : elementMoving.movingLimits.xMin || -Infinity,
 		yMin: elementMoving.movingLimits.yMin === 0 ? 0 : elementMoving.movingLimits.yMin || -Infinity,
 		xMax: elementMoving.movingLimits.xMax === 0 ? 0 : elementMoving.movingLimits.xMax || Infinity,
@@ -61,6 +65,22 @@ MovingElement.prototype.commitMove = function()
 		this.speed.angle += this.acceleration.angle * this.dt;
 	}
 	
+	if (this.movingLimits.vxMax && Math.abs(this.speed.x)>this.movingLimits.vxMax){
+		this.speed.x = this.speed.x / Math.abs(this.speed.x) * this.movingLimits.vxMax
+	}
+
+	if (this.movingLimits.vyMax && Math.abs(this.speed.y)>this.movingLimits.vyMax){
+		this.speed.y = this.speed.y / Math.abs(this.speed.y) * this.movingLimits.vyMax
+	}
+
+	if (this.movingLimits.vxMin && Math.abs(this.speed.x)<this.movingLimits.vxMin){
+		this.speed.x = this.speed.x ===0 ? this.movingLimits.vxMin : this.speed.x / Math.abs(this.speed.x) * this.movingLimits.vxMin
+	}
+
+	if (this.movingLimits.vyMin && Math.abs(this.speed.y)<this.movingLimits.vyMin){
+		this.speed.y =  this.speed.y ===0 ? this.movingLimits.vyMin : this.speed.y / Math.abs(this.speed.y) * this.movingLimits.vyMin
+	}
+
 	//console.log('new speed is ' + this.speed.y + ' at ' + this.parent.position.y);
 
 	this.originalPosition = null;
@@ -107,9 +127,28 @@ MovingElement.prototype.updatePosition = function(dt) {
 	if (this.targetElementX !== undefined)
 	{
 	//	console.log("Moving to target " + this.targetElementX + "," + this.targetElementY + " (" + dt + ")" );
+		
+		var maxDistance = this.movingLimits.vMax * dt;
+		var actualDistance = Math.sqrt(
+				(this.targetElementX- this.originalPosition.x)*(this.targetElementX- this.originalPosition.x)+
+				(this.targetElementY- this.originalPosition.y)*(this.targetElementY- this.originalPosition.y));
+		var k=1;
+		
+		if (actualDistance>maxDistance)
+			k = maxDistance/actualDistance;
+		
+		var dX = dt/this.maxDt*(this.targetElementX- this.originalPosition.x)*k;
+			var  dY = dt/this.maxDt*(this.targetElementY- this.originalPosition.y)*k;
+		
+		this.speed ={
+				x:dX/dt,
+				y:dY/dt,
+				angle:0		
+		};
+		
 		this.parent.position = {
-				x: this.originalPosition.x + dt/this.maxDt*(this.targetElementX- this.originalPosition.x),
-				y: this.originalPosition.y + dt/this.maxDt*(this.targetElementY- this.originalPosition.y),
+				x: this.originalPosition.x + dX,
+				y: this.originalPosition.y + dY,
 				angle: this.originalPosition.angle
 		};
 	}	

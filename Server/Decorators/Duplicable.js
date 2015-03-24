@@ -28,6 +28,7 @@ DuplicableElement.prototype.makeCopy = function(e){
 		});
 	
 	copy.touchIdentifier =  e.touchIdentifier; 
+	copy.socketId = e.socketId;
 	copy.movable.startMoving();
 };
 

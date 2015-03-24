@@ -161,9 +161,9 @@ Controller.prototype.getElementById = function(id) {
 	return els[0];
 };
 
-Controller.prototype.getElementByTouchIdentifier = function(touchId) {
+Controller.prototype.getElementByTouchIdentifier = function(socketId, touchId) {
 	var byIdentifier = this.elements.filter(function(e) {
-		return e.touchIdentifier == touchId;
+		return e.touchIdentifier == touchId && e.socketId == socketId;
 	});
 	return byIdentifier.length > 0 ? byIdentifier[0] : null;
 };
@@ -188,7 +188,7 @@ Controller.prototype.stop = function() {
 	if (this.intervals)
 	{
 		this.intervals.forEach(function(interval){
-			console.log("cleanInterval: " + interval);
+			//console.log("cleanInterval: " + interval);
 			clearInterval(interval);
 			});
 	}
@@ -227,12 +227,12 @@ Controller.prototype.addSocket = function(socket) {
 
 	socket.on('pointerEvent', function(message) {
 
-		//console.log('pointerEvent ' + message);
+		//console.log('pointerEvent ' + message + ' on ' +  socket.id);
 		
 		var eventData = JSON.parse(message);
 		var bubble = true;
 
-		eventData.identifierElement = controller.getElementByTouchIdentifier(eventData.touchIdentifier);
+		eventData.identifierElement = controller.getElementByTouchIdentifier(socket.id, eventData.touchIdentifier);
 		eventData.originSocketId = socket.id;
 
 		if (eventData.identifierElement) {
@@ -246,7 +246,7 @@ Controller.prototype.addSocket = function(socket) {
 		});
 
 		hits.forEach(function(hit) {
-			console.log('pointerEvent ' + message + ' applying to ' + hit.id);
+			//console.log('pointerEvent ' + message + ' applying to ' + hit.id);
 			if (!bubble)
 				return;
 

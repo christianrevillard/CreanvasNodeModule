@@ -8,14 +8,19 @@ var MovableElement = function(parent, movableData) {
 };
 
 MovableElement.prototype.startMoving = function () {
-	console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.position.x +',' + this.parent.position.y +') ');
+	//console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.position.x +',' + this.parent.position.y +') ');
+	
+	if (this.isMoving)
+		return;
+	
 	this.isMoving = true;
 	this.originalZ = this.parent.position.z;
 	this.parent.position.z = this.parent.position.z + 100;	
+	this.parent.moving.originalSpeed = this.parent.moving.speed;
 };
 
 MovableElement.prototype.stopMoving = function(eventData) {
-	console.log('Stop moving');	
+	//console.log('Stop moving');	
 	if (this.alwaysMoving)
 		return;
 	
@@ -26,13 +31,18 @@ MovableElement.prototype.stopMoving = function(eventData) {
 	this.lastMoved = null;
 	this.parent.position.z = this.originalZ;
 	this.parent.touchIdentifier = null;
+	this.parent.socketId = null;
+	this.parent.moving.speed = this.parent.moving.speed;
 
 	return false;
 };
 
 MovableElement.prototype.onPointerDown = function(eventData) {
-	console.log('Pointer down');	
+	//console.log('Pointer down');	
 
+	if (this.isMoving)
+		return;
+	
 	if (this.isBlocked && this.isBlocked(this.parent, eventData.originSocketId)) 
 		return;
 
@@ -42,6 +52,7 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 
 	if (eventData.identifierElement) {
 		eventData.identifierElement.touchIdentifier = null;
+		eventData.identifierElement.socketId = null;
 	}
 	
 	if (this.parent.droppable && this.parent.droppable.dropZone) {
@@ -49,12 +60,13 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 	}
 	
 	this.parent.touchIdentifier = eventData.touchIdentifier;
-	
+	this.parent.socketId = eventData.originSocketId;
+		
 	return false;
 };
 
 MovableElement.prototype.onPointerMove = function(eventData) {
-	console.log('Pointer move');	
+//	console.log('Pointer move');	
 
 	if (this.isBlocked && this.isBlocked(this.parent, eventData.originSocketId)) 
 		return;
@@ -74,7 +86,7 @@ MovableElement.prototype.onPointerMove = function(eventData) {
 
 	this.parent.moving.targetElementX = eventData.x;  
 	this.parent.moving.targetElementY = eventData.y;
-//	console.log("Target updated " + this.parent.moving.targetElementX + "," + this.parent.moving.targetElementY);
+	//console.log("Target updated " + this.parent.moving.targetElementX + "," + this.parent.moving.targetElementY);
 
 	return false;
 };
