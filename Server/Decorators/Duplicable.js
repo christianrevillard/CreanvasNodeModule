@@ -28,7 +28,8 @@ DuplicableElement.prototype.makeCopy = function(e){
 		});
 	
 	copy.touchIdentifier =  e.touchIdentifier; 
-	copy.socketId = e.socketId;
+    copy.originSocketId = e.originSocketId;
+    console.log('Registering ' + copy.id + ' as touchIdentifier ' + e.touchIdentifier + ' for socket ' + e.originSocketId)
 	copy.movable.startMoving();
 };
 
@@ -47,7 +48,7 @@ var applyTo = function(element, duplicableData) {
 		'pointerDown',
 		function(eventData)
 		{
-			console.log('Duplicating' + element.id  + ' at (' + element.x +',' + element.y +')');
+			console.log('Duplicating ' + element.id  + ' at (' + element.position.x +',' + element.position.y +')');
 			element.duplicable.makeCopy(eventData);			
 			return false;
 		});	

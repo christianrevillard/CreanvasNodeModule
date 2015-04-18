@@ -15,7 +15,7 @@ DropZone.prototype.drop = function(eventData) {
 	var dropped = eventData.identifierElement;
 	
 	if (!dropped || !dropped.droppable) {
-		console.log((!dropped)?('not found '+ eventData.touchElementId):'not droppable');
+		console.log((!dropped)?('not found dropped element for identifier '+ eventData.identifierElement):'not droppable');
 		return;
 	}
 

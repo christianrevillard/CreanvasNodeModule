@@ -8,7 +8,7 @@ var MovableElement = function(parent, movableData) {
 };
 
 MovableElement.prototype.startMoving = function () {
-	//console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.position.x +',' + this.parent.position.y +') ');
+	console.log('startMoving: ' + this.parent.id  + ' from (' + this.parent.position.x +',' + this.parent.position.y +') ');
 	
 	if (this.isMoving)
 		return;
@@ -20,25 +20,27 @@ MovableElement.prototype.startMoving = function () {
 };
 
 MovableElement.prototype.stopMoving = function(eventData) {
-	//console.log('Stop moving');	
+	console.log('Stop moving ?');	
 	if (this.alwaysMoving)
 		return;
 	
 	if (this.isBlocked && this.isBlocked(this.parent, eventData.originSocketId)) 
 		return;
 
+    console.log('Stop moving');
 	this.isMoving = false;
 	this.lastMoved = null;
 	this.parent.position.z = this.originalZ;
+    console.log('Cleaning' + this.parent.id + ' as touchIdentifier ' + this.parent.touchIdentifier + ' for socket ' + this.parent.originSocketId)
 	this.parent.touchIdentifier = null;
-	this.parent.socketId = null;
+	this.parent.originSocketId = null;
 	this.parent.moving.speed = this.parent.moving.speed;
 
 	return false;
 };
 
 MovableElement.prototype.onPointerDown = function(eventData) {
-	//console.log('Pointer down');	
+	console.log('Pointer down');	
 
 	if (this.isMoving)
 		return;
@@ -51,8 +53,9 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 	this.lastMoved = this.parent.controller.getTime();
 
 	if (eventData.identifierElement) {
+        console.log('Cleaning' + eventData.identifierElement.id + ' as touchIdentifier ' + eventData.identifierElement.touchIdentifier + ' for socket ' + eventData.identifierElement.originSocketId)
 		eventData.identifierElement.touchIdentifier = null;
-		eventData.identifierElement.socketId = null;
+		eventData.identifierElement.originSocketId = null;
 	}
 	
 	if (this.parent.droppable && this.parent.droppable.dropZone) {
@@ -60,7 +63,7 @@ MovableElement.prototype.onPointerDown = function(eventData) {
 	}
 	
 	this.parent.touchIdentifier = eventData.touchIdentifier;
-	this.parent.socketId = eventData.originSocketId;
+	this.parent.originSocketId = eventData.originSocketId;
 		
 	return false;
 };

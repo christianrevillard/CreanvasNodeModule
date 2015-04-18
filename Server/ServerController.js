@@ -163,7 +163,7 @@ Controller.prototype.getElementById = function(id) {
 
 Controller.prototype.getElementByTouchIdentifier = function(socketId, touchId) {
 	var byIdentifier = this.elements.filter(function(e) {
-		return e.touchIdentifier == touchId && e.socketId == socketId;
+		return e.touchIdentifier == touchId && e.originSocketId == socketId;
 	});
 	return byIdentifier.length > 0 ? byIdentifier[0] : null;
 };
@@ -227,12 +227,15 @@ Controller.prototype.addSocket = function(socket) {
 
 	socket.on('pointerEvent', function(message) {
 
-		//console.log('pointerEvent ' + message + ' on ' +  socket.id);
 		
 		var eventData = JSON.parse(message);
 		var bubble = true;
 
-		eventData.identifierElement = controller.getElementByTouchIdentifier(socket.id, eventData.touchIdentifier);
+        eventData.identifierElement = controller.getElementByTouchIdentifier(socket.id, eventData.touchIdentifier);
+        if (eventData.identifierElement) {
+            console.log('pointerEvent ' + message + ' on ' +  socket.id + ', element:' + eventData.identifierElement.id);
+        }
+
 		eventData.originSocketId = socket.id;
 
 		if (eventData.identifierElement) {
