@@ -43,12 +43,14 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Client" />
+    <Folder Include="scripts\" />
     <Folder Include="Server" />
     <Folder Include="Server\CollisionSolver" />
     <Folder Include="Server\Decorators" />
     <Folder Include="Server\ElementTypes" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="scripts\export.bat" />
     <Content Include="package.json" />
     <Content Include="README.md" />
   </ItemGroup>
